@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "34e09a5dbc1bc7462f6fe5796e54a5be"
-application_url = "https://fresh-audit-regardless-mathematics.trycloudflare.com"
+application_url = "https://truth-drives-odd-convinced.trycloudflare.com"
 embedded = true
 name = "White-Glove-Popup"
 handle = "white-glove-popup"
@@ -23,9 +23,9 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
-  "https://fresh-audit-regardless-mathematics.trycloudflare.com/auth/callback",
-  "https://fresh-audit-regardless-mathematics.trycloudflare.com/auth/shopify/callback",
-  "https://fresh-audit-regardless-mathematics.trycloudflare.com/api/auth/callback"
+  "https://truth-drives-odd-convinced.trycloudflare.com/auth/callback",
+  "https://truth-drives-odd-convinced.trycloudflare.com/auth/shopify/callback",
+  "https://truth-drives-odd-convinced.trycloudflare.com/api/auth/callback"
 ]
 
 [pos]

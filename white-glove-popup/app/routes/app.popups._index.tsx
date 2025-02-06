@@ -10,12 +10,20 @@ import {
   Badge,
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
+import prisma from "../db.server";
+import type { LoaderFunctionArgs } from "@remix-run/node";
 
-export const loader = async ({ request }) => {
+export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   
-  // TODO: Replace with actual database query once we set up the schema
-  const popups = [];
+  const popups = await prisma.popup.findMany({
+    where: {
+      shop: session.shop,
+    },
+    orderBy: {
+      createdAt: 'desc'
+    }
+  });
   
   return json({
     popups,
@@ -30,7 +38,7 @@ export default function PopupsIndex() {
       title="Popups"
       primaryAction={{
         content: "Create popup",
-        url: "popups/new",
+        url: "new",
       }}
     >
       <Layout>
@@ -47,12 +55,12 @@ export default function PopupsIndex() {
               renderItem={(popup) => (
                 <ResourceItem
                   id={popup.id}
-                  url={`popups/${popup.id}`}
+                  url={popup.id}
                 >
                   <Text as="h3" variant="bodyMd">
                     {popup.name}
                   </Text>
-                  <Badge status={popup.isEnabled ? "success" : "warning"}>
+                  <Badge tone={popup.isEnabled ? "success" : "warning"}>
                     {popup.isEnabled ? "Active" : "Inactive"}
                   </Badge>
                 </ResourceItem>
