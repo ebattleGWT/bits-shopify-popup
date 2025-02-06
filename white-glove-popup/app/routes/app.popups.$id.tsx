@@ -1,4 +1,4 @@
-import { json, type ActionFunctionArgs, type LoaderFunctionArgs } from "@remix-run/node";
+import { json, type ActionFunctionArgs, type LoaderFunctionArgs, redirect } from "@remix-run/node";
 import { Form, useActionData, useLoaderData, useNavigate, useNavigation } from "@remix-run/react";
 import React from "react";
 import {
@@ -63,7 +63,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
         shop: session.shop,
       },
     });
-    return json({ success: true });
+    return redirect("/app/popups");
   }
 
   const formData = await request.formData();
@@ -93,7 +93,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   }
 
   try {
-    const popup = await prisma.popup.update({
+    await prisma.popup.update({
       where: {
         id,
         shop: session.shop,
@@ -116,7 +116,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       },
     });
 
-    return json({ success: true });
+    return redirect("/app/popups");
   } catch (error) {
     console.error("Failed to update popup:", error);
     return json({
