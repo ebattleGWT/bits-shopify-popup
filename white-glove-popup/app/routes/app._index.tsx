@@ -16,9 +16,34 @@ import {
 } from "@shopify/polaris";
 import { TitleBar, useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
+import { ensureScriptInstalled } from "../services/script-management.server";
+import { registerWebhooks } from "../webhooks.server";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
+
+  if (!session?.shop || !session?.accessToken) {
+    console.error("Missing session data");
+    return json({});
+  }
+
+  // Ensure everything is set up
+  try {
+    await Promise.all([
+      registerWebhooks({
+        shop: session.shop,
+        accessToken: session.accessToken,
+      }),
+      ensureScriptInstalled({
+        shop: session.shop,
+        accessToken: session.accessToken,
+      }),
+    ]);
+  } catch (error) {
+    console.error("Failed to set up app:", error);
+    // Continue anyway - we don't want to block the app from loading
+  }
+
   return json({});
 }
 
