@@ -1,6 +1,6 @@
 import { json, type ActionFunctionArgs, type LoaderFunctionArgs, redirect } from "@remix-run/node";
-import { Form, useActionData, useLoaderData, useNavigate, useNavigation } from "@remix-run/react";
-import React from "react";
+import { Form, useActionData, useLoaderData, useNavigate, useNavigation, useSubmit } from "@remix-run/react";
+import React, { useCallback, useEffect } from "react";
 import {
   Page,
   Layout,
@@ -137,37 +137,76 @@ export default function EditPopup() {
   const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
   const navigate = useNavigate();
+  const submit = useSubmit();
   const isSubmitting = navigation.state === "submitting";
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const [showPreviewModal, setShowPreviewModal] = React.useState(false);
+  const [isDirty, setIsDirty] = React.useState(false);
+  const [showSuccessBanner, setShowSuccessBanner] = React.useState(false);
 
-  const [position, setPosition] = React.useState(popup.position);
-  const [theme, setTheme] = React.useState(popup.theme);
-  const [frequency, setFrequency] = React.useState(popup.frequency);
-  const [animation, setAnimation] = React.useState(popup.animation);
-  const [selectedDevices, setSelectedDevices] = React.useState<string[]>(
-    popup.deviceTypes ? JSON.parse(popup.deviceTypes) : []
-  );
-  const [selectedPages, setSelectedPages] = React.useState<string[]>(
-    popup.showOnPages ? JSON.parse(popup.showOnPages) : []
-  );
-  const [selectedCountries, setSelectedCountries] = React.useState<string[]>(
-    popup.countries ? JSON.parse(popup.countries) : []
-  );
-  const [{ month, year }, setDate] = React.useState({ 
-    month: popup.startDate ? new Date(popup.startDate).getMonth() : new Date().getMonth(), 
-    year: popup.startDate ? new Date(popup.startDate).getFullYear() : new Date().getFullYear() 
+  // Reset dirty state and show success banner when the action is successful
+  useEffect(() => {
+    if (actionData?.success) {
+      setIsDirty(false);
+      setShowSuccessBanner(true);
+      // Hide the success banner after 3 seconds
+      const timer = setTimeout(() => {
+        setShowSuccessBanner(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [actionData]);
+
+  const [formState, setFormState] = React.useState({
+    position: popup.position,
+    theme: popup.theme,
+    frequency: popup.frequency,
+    animation: popup.animation,
+    selectedDevices: popup.deviceTypes ? JSON.parse(popup.deviceTypes) : [],
+    selectedPages: popup.showOnPages ? JSON.parse(popup.showOnPages) : [],
+    selectedCountries: popup.countries ? JSON.parse(popup.countries) : [],
+    date: {
+      month: popup.startDate ? new Date(popup.startDate).getMonth() : new Date().getMonth(),
+      year: popup.startDate ? new Date(popup.startDate).getFullYear() : new Date().getFullYear(),
+    },
+    startDate: popup.startDate ? new Date(popup.startDate) : null,
+    endDate: popup.endDate ? new Date(popup.endDate) : null,
+    isEnabled: popup.isEnabled,
+    name: popup.name,
+    title: popup.title,
+    content: popup.content,
   });
-  const [startDate, setStartDate] = React.useState<Date | null>(
-    popup.startDate ? new Date(popup.startDate) : null
-  );
-  const [endDate, setEndDate] = React.useState<Date | null>(
-    popup.endDate ? new Date(popup.endDate) : null
-  );
-  const [isEnabled, setIsEnabled] = React.useState(popup.isEnabled);
-  const [name, setName] = React.useState(popup.name);
-  const [title, setTitle] = React.useState(popup.title);
-  const [content, setContent] = React.useState(popup.content);
+
+  const handleFormChange = useCallback((field: string, value: any) => {
+    setFormState(prev => ({ ...prev, [field]: value }));
+    setIsDirty(true);
+  }, []);
+
+  const handleSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    
+    // Add hidden fields
+    if (formState.startDate) {
+      formData.append('startDate', formState.startDate.toISOString());
+    }
+    if (formState.endDate) {
+      formData.append('endDate', formState.endDate.toISOString());
+    }
+    formState.selectedDevices.forEach(device => {
+      formData.append('deviceTypes', device);
+    });
+    formState.selectedPages.forEach(page => {
+      formData.append('showOnPages', page);
+    });
+    formState.selectedCountries.forEach(country => {
+      formData.append('countries', country);
+    });
+    formData.append('isEnabled', formState.isEnabled.toString());
+
+    submit(formData, { method: 'post' });
+  }, [formState, submit]);
 
   const handleDelete = async () => {
     const response = await fetch(`/app/popups/${popup.id}`, {
@@ -186,12 +225,12 @@ export default function EditPopup() {
       maxWidth: '400px',
       width: '90%',
       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
-      animation: `${animation.toLowerCase()} 0.5s`,
+      animation: `${formState.animation.toLowerCase()} 0.5s`,
       zIndex: 1000,
     };
 
     // Position styles
-    switch (position) {
+    switch (formState.position) {
       case 'TOP':
         styles.top = '20px';
         styles.left = '50%';
@@ -219,7 +258,7 @@ export default function EditPopup() {
     }
 
     // Theme styles
-    switch (theme) {
+    switch (formState.theme) {
       case 'DARK':
         styles.backgroundColor = '#333';
         styles.color = '#fff';
@@ -261,10 +300,10 @@ export default function EditPopup() {
       }}>
         <div style={styles}>
           <div style={{ marginBottom: '15px' }}>
-            <Text variant="headingMd" as="h2">{popup.title}</Text>
+            <Text variant="headingMd" as="h2">{formState.title}</Text>
           </div>
           <div style={{ marginBottom: '20px' }}>
-            <Text variant="bodyMd" as="p">{popup.content}</Text>
+            <Text variant="bodyMd" as="p">{formState.content}</Text>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
             <Button onClick={() => setShowPreviewModal(false)}>Close</Button>
@@ -277,7 +316,7 @@ export default function EditPopup() {
   return (
     <Frame>
       <Page
-        title={popup.name}
+        title={formState.name}
         backAction={{
           content: "Popups",
           onAction: () => navigate("/app/popups"),
@@ -294,21 +333,23 @@ export default function EditPopup() {
           },
         ]}
       >
-        <ContextualSaveBar
-          message="Unsaved changes"
-          saveAction={{
-            content: "Save",
-            onAction: () => {
-              const form = document.querySelector('form');
-              if (form) form.submit();
-            },
-            loading: isSubmitting,
-          }}
-          discardAction={{
-            content: "Discard",
-            onAction: () => window.location.reload(),
-          }}
-        />
+        {isDirty && (
+          <ContextualSaveBar
+            message="Unsaved changes"
+            saveAction={{
+              content: "Save",
+              onAction: () => {
+                const form = document.querySelector('form');
+                if (form) form.requestSubmit();
+              },
+              loading: isSubmitting,
+            }}
+            discardAction={{
+              content: "Discard",
+              onAction: () => window.location.reload(),
+            }}
+          />
+        )}
 
         <Modal
           open={showPreviewModal}
@@ -372,8 +413,14 @@ export default function EditPopup() {
                 <p>{actionData.errors.general}</p>
               </Banner>
             )}
+            
+            {showSuccessBanner && (
+              <Banner tone="success" onDismiss={() => setShowSuccessBanner(false)}>
+                <p>Changes saved successfully!</p>
+              </Banner>
+            )}
 
-            <Form method="post">
+            <Form method="post" onSubmit={handleSubmit}>
               <Layout>
                 <Layout.Section>
                   <Card>
@@ -383,9 +430,9 @@ export default function EditPopup() {
                           <Text variant="headingMd" as="h3">Status</Text>
                           <Checkbox
                             label="Enable popup"
-                            checked={isEnabled}
+                            checked={formState.isEnabled}
                             onChange={(checked) => {
-                              setIsEnabled(checked);
+                              handleFormChange('isEnabled', checked);
                               const input = document.createElement('input');
                               input.type = 'hidden';
                               input.name = 'isEnabled';
@@ -403,8 +450,10 @@ export default function EditPopup() {
                             <TextField
                               label="Name"
                               name="name"
-                              value={name}
-                              onChange={setName}
+                              value={formState.name}
+                              onChange={(value) => {
+                                handleFormChange('name', value);
+                              }}
                               error={actionData?.errors?.name}
                               autoComplete="off"
                               helpText="Internal name for the popup"
@@ -412,8 +461,10 @@ export default function EditPopup() {
                             <TextField
                               label="Title"
                               name="title"
-                              value={title}
-                              onChange={setTitle}
+                              value={formState.title}
+                              onChange={(value) => {
+                                handleFormChange('title', value);
+                              }}
                               error={actionData?.errors?.title}
                               autoComplete="off"
                               helpText="Title displayed to customers"
@@ -421,8 +472,10 @@ export default function EditPopup() {
                             <TextField
                               label="Content"
                               name="content"
-                              value={content}
-                              onChange={setContent}
+                              value={formState.content}
+                              onChange={(value) => {
+                                handleFormChange('content', value);
+                              }}
                               error={actionData?.errors?.content}
                               autoComplete="off"
                               multiline={4}
@@ -446,8 +499,10 @@ export default function EditPopup() {
                                 { label: "Left", value: "LEFT" },
                                 { label: "Right", value: "RIGHT" },
                               ]}
-                              value={position}
-                              onChange={setPosition}
+                              value={formState.position}
+                              onChange={(value) => {
+                                handleFormChange('position', value);
+                              }}
                             />
                             <Select
                               label="Theme"
@@ -457,8 +512,10 @@ export default function EditPopup() {
                                 { label: "Dark", value: "DARK" },
                                 { label: "Custom", value: "CUSTOM" },
                               ]}
-                              value={theme}
-                              onChange={setTheme}
+                              value={formState.theme}
+                              onChange={(value) => {
+                                handleFormChange('theme', value);
+                              }}
                             />
                             <Select
                               label="Animation"
@@ -468,8 +525,10 @@ export default function EditPopup() {
                                 { label: "Slide", value: "SLIDE" },
                                 { label: "Bounce", value: "BOUNCE" },
                               ]}
-                              value={animation}
-                              onChange={setAnimation}
+                              value={formState.animation}
+                              onChange={(value) => {
+                                handleFormChange('animation', value);
+                              }}
                             />
                             <TextField
                               label="Delay (seconds)"
@@ -497,8 +556,10 @@ export default function EditPopup() {
                                 { label: "Daily", value: "DAILY" },
                                 { label: "Weekly", value: "WEEKLY" },
                               ]}
-                              value={frequency}
-                              onChange={setFrequency}
+                              value={formState.frequency}
+                              onChange={(value) => {
+                                handleFormChange('frequency', value);
+                              }}
                               helpText="How often to show the popup to the same visitor"
                             />
                             <Box padding="400">
@@ -506,34 +567,34 @@ export default function EditPopup() {
                               <Grid>
                                 <Grid.Cell columnSpan={{ xs: 6 }}>
                                   <DatePicker
-                                    month={month}
-                                    year={year}
+                                    month={formState.date.month}
+                                    year={formState.date.year}
                                     onChange={({ start }) => {
-                                      setStartDate(start);
+                                      handleFormChange('startDate', start);
                                       const startInput = document.createElement('input');
                                       startInput.type = 'hidden';
                                       startInput.name = 'startDate';
                                       startInput.value = start.toISOString();
                                       document.forms[0].appendChild(startInput);
                                     }}
-                                    onMonthChange={(month, year) => setDate({ month, year })}
-                                    selected={startDate ? { start: startDate, end: startDate } : undefined}
+                                    onMonthChange={(month, year) => handleFormChange('date', { month, year })}
+                                    selected={formState.startDate ? { start: formState.startDate, end: formState.startDate } : undefined}
                                   />
                                 </Grid.Cell>
                                 <Grid.Cell columnSpan={{ xs: 6 }}>
                                   <DatePicker
-                                    month={month}
-                                    year={year}
+                                    month={formState.date.month}
+                                    year={formState.date.year}
                                     onChange={({ start }) => {
-                                      setEndDate(start);
+                                      handleFormChange('endDate', start);
                                       const endInput = document.createElement('input');
                                       endInput.type = 'hidden';
                                       endInput.name = 'endDate';
                                       endInput.value = start.toISOString();
                                       document.forms[0].appendChild(endInput);
                                     }}
-                                    onMonthChange={(month, year) => setDate({ month, year })}
-                                    selected={endDate ? { start: endDate, end: endDate } : undefined}
+                                    onMonthChange={(month, year) => handleFormChange('date', { month, year })}
+                                    selected={formState.endDate ? { start: formState.endDate, end: formState.endDate } : undefined}
                                   />
                                 </Grid.Cell>
                               </Grid>
@@ -553,12 +614,12 @@ export default function EditPopup() {
                                   <Checkbox
                                     key={device}
                                     label={device.charAt(0) + device.slice(1).toLowerCase()}
-                                    checked={selectedDevices.includes(device)}
+                                    checked={formState.selectedDevices.includes(device)}
                                     onChange={(checked) => {
                                       const newDevices = checked
-                                        ? [...selectedDevices, device]
-                                        : selectedDevices.filter((d) => d !== device);
-                                      setSelectedDevices(newDevices);
+                                        ? [...formState.selectedDevices, device]
+                                        : formState.selectedDevices.filter((d) => d !== device);
+                                      handleFormChange('selectedDevices', newDevices);
                                       const input = document.createElement('input');
                                       input.type = 'hidden';
                                       input.name = 'deviceTypes';
@@ -577,13 +638,13 @@ export default function EditPopup() {
                             <TextField
                               label="Show on Pages"
                               name="showOnPages"
-                              value={selectedPages.join('\n')}
+                              value={formState.selectedPages.join('\n')}
                               helpText="Enter page URLs (one per line)"
                               multiline={3}
                               autoComplete="off"
                               onChange={(value) => {
                                 const pages = value.split('\n').filter(Boolean);
-                                setSelectedPages(pages);
+                                handleFormChange('selectedPages', pages);
                                 document.forms[0].querySelectorAll('input[name="showOnPages"]').forEach(el => el.remove());
                                 pages.forEach(page => {
                                   const input = document.createElement('input');
@@ -598,13 +659,13 @@ export default function EditPopup() {
                             <TextField
                               label="Countries"
                               name="countries"
-                              value={selectedCountries.join('\n')}
+                              value={formState.selectedCountries.join('\n')}
                               helpText="Enter country codes (one per line, e.g., US, CA)"
                               multiline={3}
                               autoComplete="off"
                               onChange={(value) => {
                                 const countries = value.split('\n').filter(Boolean);
-                                setSelectedCountries(countries);
+                                handleFormChange('selectedCountries', countries);
                                 document.forms[0].querySelectorAll('input[name="countries"]').forEach(el => el.remove());
                                 countries.forEach(country => {
                                   const input = document.createElement('input');
