@@ -1,0 +1,45 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Session {
+  id          String    @id
+  shop        String
+  state       String
+  isOnline    Boolean   @default(false)
+  scope       String?
+  expires     DateTime?
+  accessToken String
+  userId      BigInt?
+}
+
+model Popup {
+  id          String    @id @default(uuid())
+  name        String
+  title       String
+  content     String
+  isEnabled   Boolean   @default(false)
+  startDate   DateTime?
+  endDate     DateTime?
+  position    String    @default("CENTER") // TOP, BOTTOM, LEFT, RIGHT, CENTER
+  theme       String    @default("LIGHT") // LIGHT, DARK, CUSTOM
+  customCss   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  shop        String    // Store the Shopify shop domain
+  
+  // Targeting options
+  showOnPages String?   // JSON array of page URLs
+  deviceTypes String?   // JSON array: MOBILE, DESKTOP, TABLET
+  countries   String?   // JSON array of country codes
+  
+  // Display settings
+  delay       Int       @default(0) // Delay in seconds before showing
+  frequency   String    @default("ALWAYS") // ALWAYS, ONCE, DAILY, WEEKLY
+  animation   String    @default("FADE") // FADE, SLIDE, BOUNCE
+} 

@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "34e09a5dbc1bc7462f6fe5796e54a5be"
-application_url = "https://hey-ecuador-machines-resume.trycloudflare.com"
+application_url = "https://fresh-audit-regardless-mathematics.trycloudflare.com"
 embedded = true
 name = "White-Glove-Popup"
 handle = "white-glove-popup"
@@ -23,14 +23,14 @@ scopes = "write_products"
 
 [auth]
 redirect_urls = [
-  "https://example.com/api/auth",
-  "https://spyware-competing-curriculum-pmc.trycloudflare.com/auth/callback",
-  "https://spyware-competing-curriculum-pmc.trycloudflare.com/auth/shopify/callback",
-  "https://spyware-competing-curriculum-pmc.trycloudflare.com/api/auth/callback",
-  "https://hey-ecuador-machines-resume.trycloudflare.com/auth/callback",
-  "https://hey-ecuador-machines-resume.trycloudflare.com/auth/shopify/callback",
-  "https://hey-ecuador-machines-resume.trycloudflare.com/api/auth/callback"
+  "https://fresh-audit-regardless-mathematics.trycloudflare.com/auth/callback",
+  "https://fresh-audit-regardless-mathematics.trycloudflare.com/auth/shopify/callback",
+  "https://fresh-audit-regardless-mathematics.trycloudflare.com/api/auth/callback"
 ]
 
 [pos]
 embedded = false
+
+[build]
+dev_store_url = "bits-development.myshopify.com"
+automatically_update_urls_on_dev = true
