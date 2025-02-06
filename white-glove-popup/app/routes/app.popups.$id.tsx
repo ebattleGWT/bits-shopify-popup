@@ -270,355 +270,357 @@ export default function EditPopup() {
   };
 
   return (
-    <Page
-      title={popup.name}
-      backAction={{
-        content: "Popups",
-        onAction: () => navigate("/app/popups"),
-      }}
-      secondaryActions={[
-        {
-          content: "Preview",
-          onAction: () => setShowPreviewModal(true),
-        },
-        {
-          content: "Delete",
-          destructive: true,
-          onAction: () => setShowDeleteModal(true),
-        },
-      ]}
-    >
-      <ContextualSaveBar
-        message="Unsaved changes"
-        saveAction={{
-          content: "Save",
-          onAction: () => {
-            const form = document.querySelector('form');
-            if (form) form.submit();
-          },
-          loading: isSubmitting,
-        }}
-        discardAction={{
-          content: "Discard",
-          onAction: () => window.location.reload(),
-        }}
-      />
-
-      <Modal
-        open={showPreviewModal}
-        onClose={() => setShowPreviewModal(false)}
-        title="Preview Popup"
-        size="large"
-      >
-        <Modal.Section>
-          <div style={{ height: '80vh', position: 'relative', border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
-            <div style={{ 
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              padding: '8px',
-              backgroundColor: '#f6f6f7',
-              borderBottom: '1px solid #ddd',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}>
-              <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ff5f57' }}></div>
-              <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ffbd2e' }}></div>
-              <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#28c940' }}></div>
-              <Text variant="bodyMd" as="span" tone="subdued">Preview Mode</Text>
-            </div>
-            <div style={{ height: '100%', paddingTop: '40px' }}>
-              <PreviewContent />
-            </div>
-          </div>
-        </Modal.Section>
-      </Modal>
-
-      <Modal
-        open={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
-        title="Delete popup"
-        primaryAction={{
-          content: "Delete",
-          destructive: true,
-          onAction: handleDelete,
+    <Frame>
+      <Page
+        title={popup.name}
+        backAction={{
+          content: "Popups",
+          onAction: () => navigate("/app/popups"),
         }}
         secondaryActions={[
           {
-            content: "Cancel",
-            onAction: () => setShowDeleteModal(false),
+            content: "Preview",
+            onAction: () => setShowPreviewModal(true),
+          },
+          {
+            content: "Delete",
+            destructive: true,
+            onAction: () => setShowDeleteModal(true),
           },
         ]}
       >
-        <Modal.Section>
-          <Text as="p">
-            Are you sure you want to delete this popup? This action cannot be undone.
-          </Text>
-        </Modal.Section>
-      </Modal>
+        <ContextualSaveBar
+          message="Unsaved changes"
+          saveAction={{
+            content: "Save",
+            onAction: () => {
+              const form = document.querySelector('form');
+              if (form) form.submit();
+            },
+            loading: isSubmitting,
+          }}
+          discardAction={{
+            content: "Discard",
+            onAction: () => window.location.reload(),
+          }}
+        />
 
-      <Layout>
-        <Layout.Section>
-          {actionData?.errors?.general && (
-            <Banner tone="critical">
-              <p>{actionData.errors.general}</p>
-            </Banner>
-          )}
+        <Modal
+          open={showPreviewModal}
+          onClose={() => setShowPreviewModal(false)}
+          title="Preview Popup"
+          size="large"
+        >
+          <Modal.Section>
+            <div style={{ height: '80vh', position: 'relative', border: '1px solid #ddd', borderRadius: '8px', overflow: 'hidden' }}>
+              <div style={{ 
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                padding: '8px',
+                backgroundColor: '#f6f6f7',
+                borderBottom: '1px solid #ddd',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ff5f57' }}></div>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#ffbd2e' }}></div>
+                <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: '#28c940' }}></div>
+                <Text variant="bodyMd" as="span" tone="subdued">Preview Mode</Text>
+              </div>
+              <div style={{ height: '100%', paddingTop: '40px' }}>
+                <PreviewContent />
+              </div>
+            </div>
+          </Modal.Section>
+        </Modal>
 
-          <Form method="post">
-            <Layout>
-              <Layout.Section>
-                <Card>
-                  <BlockStack gap="400">
-                    <Box padding="400">
-                      <BlockStack gap="400">
-                        <Text variant="headingMd" as="h3">Status</Text>
-                        <Checkbox
-                          label="Enable popup"
-                          checked={isEnabled}
-                          onChange={(checked) => {
-                            setIsEnabled(checked);
-                            const input = document.createElement('input');
-                            input.type = 'hidden';
-                            input.name = 'isEnabled';
-                            input.value = checked.toString();
-                            document.forms[0].appendChild(input);
-                          }}
-                        />
-                      </BlockStack>
-                    </Box>
+        <Modal
+          open={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          title="Delete popup"
+          primaryAction={{
+            content: "Delete",
+            destructive: true,
+            onAction: handleDelete,
+          }}
+          secondaryActions={[
+            {
+              content: "Cancel",
+              onAction: () => setShowDeleteModal(false),
+            },
+          ]}
+        >
+          <Modal.Section>
+            <Text as="p">
+              Are you sure you want to delete this popup? This action cannot be undone.
+            </Text>
+          </Modal.Section>
+        </Modal>
 
-                    <Box padding="400">
-                      <BlockStack gap="400">
-                        <Text variant="headingMd" as="h3">Basic Information</Text>
-                        <FormLayout>
-                          <TextField
-                            label="Name"
-                            name="name"
-                            value={name}
-                            onChange={setName}
-                            error={actionData?.errors?.name}
-                            autoComplete="off"
-                            helpText="Internal name for the popup"
-                          />
-                          <TextField
-                            label="Title"
-                            name="title"
-                            value={title}
-                            onChange={setTitle}
-                            error={actionData?.errors?.title}
-                            autoComplete="off"
-                            helpText="Title displayed to customers"
-                          />
-                          <TextField
-                            label="Content"
-                            name="content"
-                            value={content}
-                            onChange={setContent}
-                            error={actionData?.errors?.content}
-                            autoComplete="off"
-                            multiline={4}
-                            helpText="Main content of the popup"
-                          />
-                        </FormLayout>
-                      </BlockStack>
-                    </Box>
+        <Layout>
+          <Layout.Section>
+            {actionData?.errors?.general && (
+              <Banner tone="critical">
+                <p>{actionData.errors.general}</p>
+              </Banner>
+            )}
 
-                    <Box padding="400">
-                      <BlockStack gap="400">
-                        <Text variant="headingMd" as="h3">Appearance</Text>
-                        <FormLayout>
-                          <Select
-                            label="Position"
-                            name="position"
-                            options={[
-                              { label: "Center", value: "CENTER" },
-                              { label: "Top", value: "TOP" },
-                              { label: "Bottom", value: "BOTTOM" },
-                              { label: "Left", value: "LEFT" },
-                              { label: "Right", value: "RIGHT" },
-                            ]}
-                            value={position}
-                            onChange={setPosition}
-                          />
-                          <Select
-                            label="Theme"
-                            name="theme"
-                            options={[
-                              { label: "Light", value: "LIGHT" },
-                              { label: "Dark", value: "DARK" },
-                              { label: "Custom", value: "CUSTOM" },
-                            ]}
-                            value={theme}
-                            onChange={setTheme}
-                          />
-                          <Select
-                            label="Animation"
-                            name="animation"
-                            options={[
-                              { label: "Fade", value: "FADE" },
-                              { label: "Slide", value: "SLIDE" },
-                              { label: "Bounce", value: "BOUNCE" },
-                            ]}
-                            value={animation}
-                            onChange={setAnimation}
-                          />
-                          <TextField
-                            label="Delay (seconds)"
-                            name="delay"
-                            type="number"
-                            min="0"
-                            value={popup.delay.toString()}
-                            autoComplete="off"
-                            helpText="Time to wait before showing the popup"
-                          />
-                        </FormLayout>
-                      </BlockStack>
-                    </Box>
-
-                    <Box padding="400">
-                      <BlockStack gap="400">
-                        <Text variant="headingMd" as="h3">Display Settings</Text>
-                        <FormLayout>
-                          <Select
-                            label="Frequency"
-                            name="frequency"
-                            options={[
-                              { label: "Always", value: "ALWAYS" },
-                              { label: "Once", value: "ONCE" },
-                              { label: "Daily", value: "DAILY" },
-                              { label: "Weekly", value: "WEEKLY" },
-                            ]}
-                            value={frequency}
-                            onChange={setFrequency}
-                            helpText="How often to show the popup to the same visitor"
-                          />
-                          <Box padding="400">
-                            <Text variant="headingMd" as="h3">Schedule</Text>
-                            <Grid>
-                              <Grid.Cell columnSpan={{ xs: 6 }}>
-                                <DatePicker
-                                  month={month}
-                                  year={year}
-                                  onChange={({ start }) => {
-                                    setStartDate(start);
-                                    const startInput = document.createElement('input');
-                                    startInput.type = 'hidden';
-                                    startInput.name = 'startDate';
-                                    startInput.value = start.toISOString();
-                                    document.forms[0].appendChild(startInput);
-                                  }}
-                                  onMonthChange={(month, year) => setDate({ month, year })}
-                                  selected={startDate ? { start: startDate, end: startDate } : undefined}
-                                />
-                              </Grid.Cell>
-                              <Grid.Cell columnSpan={{ xs: 6 }}>
-                                <DatePicker
-                                  month={month}
-                                  year={year}
-                                  onChange={({ start }) => {
-                                    setEndDate(start);
-                                    const endInput = document.createElement('input');
-                                    endInput.type = 'hidden';
-                                    endInput.name = 'endDate';
-                                    endInput.value = start.toISOString();
-                                    document.forms[0].appendChild(endInput);
-                                  }}
-                                  onMonthChange={(month, year) => setDate({ month, year })}
-                                  selected={endDate ? { start: endDate, end: endDate } : undefined}
-                                />
-                              </Grid.Cell>
-                            </Grid>
-                          </Box>
-                        </FormLayout>
-                      </BlockStack>
-                    </Box>
-
-                    <Box padding="400">
-                      <BlockStack gap="400">
-                        <Text variant="headingMd" as="h3">Targeting</Text>
-                        <FormLayout>
-                          <Box padding="400">
-                            <Text variant="headingMd" as="h3">Device Types</Text>
-                            <InlineStack gap="300">
-                              {["MOBILE", "DESKTOP", "TABLET"].map((device) => (
-                                <Checkbox
-                                  key={device}
-                                  label={device.charAt(0) + device.slice(1).toLowerCase()}
-                                  checked={selectedDevices.includes(device)}
-                                  onChange={(checked) => {
-                                    const newDevices = checked
-                                      ? [...selectedDevices, device]
-                                      : selectedDevices.filter((d) => d !== device);
-                                    setSelectedDevices(newDevices);
-                                    const input = document.createElement('input');
-                                    input.type = 'hidden';
-                                    input.name = 'deviceTypes';
-                                    input.value = device;
-                                    if (checked) {
-                                      document.forms[0].appendChild(input);
-                                    } else {
-                                      document.forms[0].querySelector(`input[name="deviceTypes"][value="${device}"]`)?.remove();
-                                    }
-                                  }}
-                                />
-                              ))}
-                            </InlineStack>
-                          </Box>
-
-                          <TextField
-                            label="Show on Pages"
-                            name="showOnPages"
-                            value={selectedPages.join('\n')}
-                            helpText="Enter page URLs (one per line)"
-                            multiline={3}
-                            autoComplete="off"
-                            onChange={(value) => {
-                              const pages = value.split('\n').filter(Boolean);
-                              setSelectedPages(pages);
-                              document.forms[0].querySelectorAll('input[name="showOnPages"]').forEach(el => el.remove());
-                              pages.forEach(page => {
-                                const input = document.createElement('input');
-                                input.type = 'hidden';
-                                input.name = 'showOnPages';
-                                input.value = page;
-                                document.forms[0].appendChild(input);
-                              });
+            <Form method="post">
+              <Layout>
+                <Layout.Section>
+                  <Card>
+                    <BlockStack gap="400">
+                      <Box padding="400">
+                        <BlockStack gap="400">
+                          <Text variant="headingMd" as="h3">Status</Text>
+                          <Checkbox
+                            label="Enable popup"
+                            checked={isEnabled}
+                            onChange={(checked) => {
+                              setIsEnabled(checked);
+                              const input = document.createElement('input');
+                              input.type = 'hidden';
+                              input.name = 'isEnabled';
+                              input.value = checked.toString();
+                              document.forms[0].appendChild(input);
                             }}
                           />
+                        </BlockStack>
+                      </Box>
 
-                          <TextField
-                            label="Countries"
-                            name="countries"
-                            value={selectedCountries.join('\n')}
-                            helpText="Enter country codes (one per line, e.g., US, CA)"
-                            multiline={3}
-                            autoComplete="off"
-                            onChange={(value) => {
-                              const countries = value.split('\n').filter(Boolean);
-                              setSelectedCountries(countries);
-                              document.forms[0].querySelectorAll('input[name="countries"]').forEach(el => el.remove());
-                              countries.forEach(country => {
-                                const input = document.createElement('input');
-                                input.type = 'hidden';
-                                input.name = 'countries';
-                                input.value = country;
-                                document.forms[0].appendChild(input);
-                              });
-                            }}
-                          />
-                        </FormLayout>
-                      </BlockStack>
-                    </Box>
-                  </BlockStack>
-                </Card>
-              </Layout.Section>
-            </Layout>
-          </Form>
-        </Layout.Section>
-      </Layout>
-    </Page>
+                      <Box padding="400">
+                        <BlockStack gap="400">
+                          <Text variant="headingMd" as="h3">Basic Information</Text>
+                          <FormLayout>
+                            <TextField
+                              label="Name"
+                              name="name"
+                              value={name}
+                              onChange={setName}
+                              error={actionData?.errors?.name}
+                              autoComplete="off"
+                              helpText="Internal name for the popup"
+                            />
+                            <TextField
+                              label="Title"
+                              name="title"
+                              value={title}
+                              onChange={setTitle}
+                              error={actionData?.errors?.title}
+                              autoComplete="off"
+                              helpText="Title displayed to customers"
+                            />
+                            <TextField
+                              label="Content"
+                              name="content"
+                              value={content}
+                              onChange={setContent}
+                              error={actionData?.errors?.content}
+                              autoComplete="off"
+                              multiline={4}
+                              helpText="Main content of the popup"
+                            />
+                          </FormLayout>
+                        </BlockStack>
+                      </Box>
+
+                      <Box padding="400">
+                        <BlockStack gap="400">
+                          <Text variant="headingMd" as="h3">Appearance</Text>
+                          <FormLayout>
+                            <Select
+                              label="Position"
+                              name="position"
+                              options={[
+                                { label: "Center", value: "CENTER" },
+                                { label: "Top", value: "TOP" },
+                                { label: "Bottom", value: "BOTTOM" },
+                                { label: "Left", value: "LEFT" },
+                                { label: "Right", value: "RIGHT" },
+                              ]}
+                              value={position}
+                              onChange={setPosition}
+                            />
+                            <Select
+                              label="Theme"
+                              name="theme"
+                              options={[
+                                { label: "Light", value: "LIGHT" },
+                                { label: "Dark", value: "DARK" },
+                                { label: "Custom", value: "CUSTOM" },
+                              ]}
+                              value={theme}
+                              onChange={setTheme}
+                            />
+                            <Select
+                              label="Animation"
+                              name="animation"
+                              options={[
+                                { label: "Fade", value: "FADE" },
+                                { label: "Slide", value: "SLIDE" },
+                                { label: "Bounce", value: "BOUNCE" },
+                              ]}
+                              value={animation}
+                              onChange={setAnimation}
+                            />
+                            <TextField
+                              label="Delay (seconds)"
+                              name="delay"
+                              type="number"
+                              min="0"
+                              value={popup.delay.toString()}
+                              autoComplete="off"
+                              helpText="Time to wait before showing the popup"
+                            />
+                          </FormLayout>
+                        </BlockStack>
+                      </Box>
+
+                      <Box padding="400">
+                        <BlockStack gap="400">
+                          <Text variant="headingMd" as="h3">Display Settings</Text>
+                          <FormLayout>
+                            <Select
+                              label="Frequency"
+                              name="frequency"
+                              options={[
+                                { label: "Always", value: "ALWAYS" },
+                                { label: "Once", value: "ONCE" },
+                                { label: "Daily", value: "DAILY" },
+                                { label: "Weekly", value: "WEEKLY" },
+                              ]}
+                              value={frequency}
+                              onChange={setFrequency}
+                              helpText="How often to show the popup to the same visitor"
+                            />
+                            <Box padding="400">
+                              <Text variant="headingMd" as="h3">Schedule</Text>
+                              <Grid>
+                                <Grid.Cell columnSpan={{ xs: 6 }}>
+                                  <DatePicker
+                                    month={month}
+                                    year={year}
+                                    onChange={({ start }) => {
+                                      setStartDate(start);
+                                      const startInput = document.createElement('input');
+                                      startInput.type = 'hidden';
+                                      startInput.name = 'startDate';
+                                      startInput.value = start.toISOString();
+                                      document.forms[0].appendChild(startInput);
+                                    }}
+                                    onMonthChange={(month, year) => setDate({ month, year })}
+                                    selected={startDate ? { start: startDate, end: startDate } : undefined}
+                                  />
+                                </Grid.Cell>
+                                <Grid.Cell columnSpan={{ xs: 6 }}>
+                                  <DatePicker
+                                    month={month}
+                                    year={year}
+                                    onChange={({ start }) => {
+                                      setEndDate(start);
+                                      const endInput = document.createElement('input');
+                                      endInput.type = 'hidden';
+                                      endInput.name = 'endDate';
+                                      endInput.value = start.toISOString();
+                                      document.forms[0].appendChild(endInput);
+                                    }}
+                                    onMonthChange={(month, year) => setDate({ month, year })}
+                                    selected={endDate ? { start: endDate, end: endDate } : undefined}
+                                  />
+                                </Grid.Cell>
+                              </Grid>
+                            </Box>
+                          </FormLayout>
+                        </BlockStack>
+                      </Box>
+
+                      <Box padding="400">
+                        <BlockStack gap="400">
+                          <Text variant="headingMd" as="h3">Targeting</Text>
+                          <FormLayout>
+                            <Box padding="400">
+                              <Text variant="headingMd" as="h3">Device Types</Text>
+                              <InlineStack gap="300">
+                                {["MOBILE", "DESKTOP", "TABLET"].map((device) => (
+                                  <Checkbox
+                                    key={device}
+                                    label={device.charAt(0) + device.slice(1).toLowerCase()}
+                                    checked={selectedDevices.includes(device)}
+                                    onChange={(checked) => {
+                                      const newDevices = checked
+                                        ? [...selectedDevices, device]
+                                        : selectedDevices.filter((d) => d !== device);
+                                      setSelectedDevices(newDevices);
+                                      const input = document.createElement('input');
+                                      input.type = 'hidden';
+                                      input.name = 'deviceTypes';
+                                      input.value = device;
+                                      if (checked) {
+                                        document.forms[0].appendChild(input);
+                                      } else {
+                                        document.forms[0].querySelector(`input[name="deviceTypes"][value="${device}"]`)?.remove();
+                                      }
+                                    }}
+                                  />
+                                ))}
+                              </InlineStack>
+                            </Box>
+
+                            <TextField
+                              label="Show on Pages"
+                              name="showOnPages"
+                              value={selectedPages.join('\n')}
+                              helpText="Enter page URLs (one per line)"
+                              multiline={3}
+                              autoComplete="off"
+                              onChange={(value) => {
+                                const pages = value.split('\n').filter(Boolean);
+                                setSelectedPages(pages);
+                                document.forms[0].querySelectorAll('input[name="showOnPages"]').forEach(el => el.remove());
+                                pages.forEach(page => {
+                                  const input = document.createElement('input');
+                                  input.type = 'hidden';
+                                  input.name = 'showOnPages';
+                                  input.value = page;
+                                  document.forms[0].appendChild(input);
+                                });
+                              }}
+                            />
+
+                            <TextField
+                              label="Countries"
+                              name="countries"
+                              value={selectedCountries.join('\n')}
+                              helpText="Enter country codes (one per line, e.g., US, CA)"
+                              multiline={3}
+                              autoComplete="off"
+                              onChange={(value) => {
+                                const countries = value.split('\n').filter(Boolean);
+                                setSelectedCountries(countries);
+                                document.forms[0].querySelectorAll('input[name="countries"]').forEach(el => el.remove());
+                                countries.forEach(country => {
+                                  const input = document.createElement('input');
+                                  input.type = 'hidden';
+                                  input.name = 'countries';
+                                  input.value = country;
+                                  document.forms[0].appendChild(input);
+                                });
+                              }}
+                            />
+                          </FormLayout>
+                        </BlockStack>
+                      </Box>
+                    </BlockStack>
+                  </Card>
+                </Layout.Section>
+              </Layout>
+            </Form>
+          </Layout.Section>
+        </Layout>
+      </Page>
+    </Frame>
   );
 } 

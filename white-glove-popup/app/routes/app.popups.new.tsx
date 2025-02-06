@@ -1,4 +1,4 @@
-import { json, type ActionFunctionArgs } from "@remix-run/node";
+import { json, type ActionFunctionArgs, redirect } from "@remix-run/node";
 import { Form, useActionData, useNavigate, useNavigation } from "@remix-run/react";
 import React from "react";
 import {
@@ -79,7 +79,7 @@ export async function action({ request }: ActionFunctionArgs) {
       },
     });
 
-    return json({ success: true });
+    return redirect("/app/popups");
   } catch (error) {
     console.error("Failed to create popup:", error);
     return json({
