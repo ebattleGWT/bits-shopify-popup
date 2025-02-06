@@ -49,4 +49,48 @@ model Popup {
   delay       Int       @default(0) // Delay in seconds before showing
   frequency   String    @default("ALWAYS") // ALWAYS, ONCE, DAILY, WEEKLY
   animation   String    @default("FADE") // FADE, SLIDE, BOUNCE
+  events    PopupEvent[]
+  metrics   PopupMetrics?
+}
+
+model PopupEvent {
+  id          String    @id @default(uuid())
+  popupId     String
+  popup       Popup     @relation(fields: [popupId], references: [id], onDelete: Cascade)
+  eventType   String    // IMPRESSION, CLICK, CLOSE, CONVERSION
+  createdAt   DateTime  @default(now())
+  deviceType  String?   // MOBILE, DESKTOP, TABLET
+  country     String?
+  page        String?   // URL where the event occurred
+  metadata    String?   // JSON string for additional data
+  sessionId   String?   // To track unique visitors
+  shop        String    // Store the Shopify shop domain
+
+  @@index([popupId, eventType])
+  @@index([createdAt])
+  @@index([shop])
+}
+
+model PopupMetrics {
+  id              String    @id @default(uuid())
+  popupId         String    @unique
+  popup           Popup     @relation(fields: [popupId], references: [id], onDelete: Cascade)
+  impressions     Int       @default(0)
+  clicks          Int       @default(0)
+  conversions     Int       @default(0)
+  closeCount      Int       @default(0)
+  lastUpdated     DateTime  @updatedAt
+  shop            String    // Store the Shopify shop domain
+
+  // Engagement metrics
+  avgTimeToClick  Float?    // Average time in seconds from impression to click
+  avgTimeToClose  Float?    // Average time in seconds from impression to close
+  bounceRate      Float?    // Percentage of users who close without interaction
+  
+  // Device breakdown (JSON strings)
+  deviceBreakdown String?   // { "MOBILE": 40, "DESKTOP": 50, "TABLET": 10 }
+  countryBreakdown String?  // { "US": 60, "CA": 20, "UK": 20 }
+  pageBreakdown   String?   // { "/products": 40, "/cart": 30, "/": 30 }
+
+  @@index([shop])
 } 

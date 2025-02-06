@@ -160,6 +160,9 @@ export default function EditPopup() {
     popup.endDate ? new Date(popup.endDate) : null
   );
   const [isEnabled, setIsEnabled] = React.useState(popup.isEnabled);
+  const [name, setName] = React.useState(popup.name);
+  const [title, setTitle] = React.useState(popup.title);
+  const [content, setContent] = React.useState(popup.content);
 
   const handleDelete = async () => {
     const response = await fetch(`/app/popups/${popup.id}`, {
@@ -394,7 +397,8 @@ export default function EditPopup() {
                           <TextField
                             label="Name"
                             name="name"
-                            value={popup.name}
+                            value={name}
+                            onChange={setName}
                             error={actionData?.errors?.name}
                             autoComplete="off"
                             helpText="Internal name for the popup"
@@ -402,7 +406,8 @@ export default function EditPopup() {
                           <TextField
                             label="Title"
                             name="title"
-                            value={popup.title}
+                            value={title}
+                            onChange={setTitle}
                             error={actionData?.errors?.title}
                             autoComplete="off"
                             helpText="Title displayed to customers"
@@ -410,7 +415,8 @@ export default function EditPopup() {
                           <TextField
                             label="Content"
                             name="content"
-                            value={popup.content}
+                            value={content}
+                            onChange={setContent}
                             error={actionData?.errors?.content}
                             autoComplete="off"
                             multiline={4}

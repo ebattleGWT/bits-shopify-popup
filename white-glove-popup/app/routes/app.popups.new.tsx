@@ -106,6 +106,9 @@ export default function NewPopup() {
   const [{ month, year }, setDate] = React.useState({ month: new Date().getMonth(), year: new Date().getFullYear() });
   const [startDate, setStartDate] = React.useState<Date | null>(null);
   const [endDate, setEndDate] = React.useState<Date | null>(null);
+  const [name, setName] = React.useState("");
+  const [title, setTitle] = React.useState("");
+  const [content, setContent] = React.useState("");
 
   return (
     <Page
@@ -135,6 +138,8 @@ export default function NewPopup() {
                           <TextField
                             label="Name"
                             name="name"
+                            value={name}
+                            onChange={setName}
                             error={actionData?.errors?.name}
                             autoComplete="off"
                             helpText="Internal name for the popup"
@@ -142,6 +147,8 @@ export default function NewPopup() {
                           <TextField
                             label="Title"
                             name="title"
+                            value={title}
+                            onChange={setTitle}
                             error={actionData?.errors?.title}
                             autoComplete="off"
                             helpText="Title displayed to customers"
@@ -149,6 +156,8 @@ export default function NewPopup() {
                           <TextField
                             label="Content"
                             name="content"
+                            value={content}
+                            onChange={setContent}
                             error={actionData?.errors?.content}
                             autoComplete="off"
                             multiline={4}

@@ -21,6 +21,45 @@ export async function loader({ request }: LoaderFunctionArgs) {
       const POPUP_STORAGE_PREFIX = 'shopify_popup_';
       let activePopup = null;
 
+      // Add tracking function
+      async function trackEvent(popupId, eventType, metadata = {}) {
+        try {
+          const deviceType = getDeviceType();
+          const page = getCurrentPage();
+          const country = await getVisitorCountry();
+          const sessionId = getOrCreateSessionId();
+
+          await fetch('/api/events', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              popupId,
+              eventType,
+              deviceType,
+              country,
+              page,
+              metadata,
+              sessionId,
+              shop: '${shop}',
+            }),
+          });
+        } catch (error) {
+          console.error('Failed to track event:', error);
+        }
+      }
+
+      // Helper function to manage session IDs
+      function getOrCreateSessionId() {
+        let sessionId = sessionStorage.getItem('popup_session_id');
+        if (!sessionId) {
+          sessionId = 'sess_' + Math.random().toString(36).substr(2, 9);
+          sessionStorage.setItem('popup_session_id', sessionId);
+        }
+        return sessionId;
+      }
+
       // Helper function to check device type
       function getDeviceType() {
         const width = window.innerWidth;
@@ -80,8 +119,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
         return true;
       }
 
-      // Create and show the popup
+      // Update createPopup function to track events
       function createPopup(popup) {
+        // Track impression
+        trackEvent(popup.id, 'IMPRESSION');
+
         // Create container
         const container = document.createElement('div');
         container.style.position = 'fixed';
@@ -141,7 +183,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
             container.style.color = '#333';
         }
 
-        // Add content
+        // Add content with tracking
         container.innerHTML = \`
           <div style="margin-bottom: 15px">
             <h2 style="margin: 0; font-size: 1.2em">\${popup.title}</h2>
@@ -150,14 +192,25 @@ export async function loader({ request }: LoaderFunctionArgs) {
             <p style="margin: 0">\${popup.content}</p>
           </div>
           <div style="display: flex; justify-content: flex-end; gap: 10px">
-            <button onclick="this.closest('div').parentElement.remove()" style="padding: 8px 16px; border: none; border-radius: 4px; background: #5c6ac4; color: white; cursor: pointer">
+            <button 
+              onclick="this.closest('div').parentElement.remove(); window.trackPopupClose('\${popup.id}')" 
+              style="padding: 8px 16px; border: none; border-radius: 4px; background: #5c6ac4; color: white; cursor: pointer"
+            >
               Close
             </button>
           </div>
         \`;
 
-        // Add animation
-        container.style.animation = \`\${popup.animation.toLowerCase()} 0.5s\`;
+        // Add click tracking to the entire popup
+        container.addEventListener('click', (e) => {
+          // Don't track clicks on the close button
+          if (!e.target.closest('button')) {
+            trackEvent(popup.id, 'CLICK', {
+              elementType: e.target.tagName.toLowerCase(),
+              text: e.target.textContent,
+            });
+          }
+        });
 
         // Add to page
         document.body.appendChild(container);
@@ -166,6 +219,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
         // Store last shown time
         localStorage.setItem(POPUP_STORAGE_PREFIX + popup.id, new Date().toISOString());
       }
+
+      // Add global tracking functions
+      window.trackPopupClose = function(popupId) {
+        trackEvent(popupId, 'CLOSE');
+      };
+
+      window.trackPopupConversion = function(popupId, metadata = {}) {
+        trackEvent(popupId, 'CONVERSION', metadata);
+      };
 
       // Main function to check and show popups
       async function checkAndShowPopups() {
