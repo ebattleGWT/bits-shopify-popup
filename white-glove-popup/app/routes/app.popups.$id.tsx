@@ -53,7 +53,12 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 }
 
 export async function action({ request, params }: ActionFunctionArgs) {
-  const { session } = await authenticate.admin(request);
+  const { admin, session } = await authenticate.admin(request);
+
+  if (!session?.shop) {
+    return json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id } = params;
 
   if (request.method === "DELETE") {
@@ -116,7 +121,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       },
     });
 
-    return redirect("/app/popups");
+    return redirect(`/app/popups/${id}`);
   } catch (error) {
     console.error("Failed to update popup:", error);
     return json({
