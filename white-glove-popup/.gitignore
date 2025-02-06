@@ -1,24 +1,35 @@
-node_modules
-
-/.cache
-/build
-/app/build
-/public/build/
-/public/_dev
-/app/public/build
-/prisma/dev.sqlite
-/prisma/dev.sqlite-journal
-database.sqlite
-
+# Environment variables
 .env
 .env.*
+!.env.example
 
+# Dependencies
+node_modules/
+.npm
+yarn-debug.log*
+yarn-error.log*
 
+# Build outputs
+dist/
+build/
+.next/
+out/
 
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
 
+# Logs
+logs
+*.log
+npm-debug.log*
 
-/extensions/*/dist
+# Testing
+coverage/
 
-# Ignore shopify files created during app dev
-.shopify/*
-.shopify.lock
+# Misc
+.cache/
+.temp/ 
