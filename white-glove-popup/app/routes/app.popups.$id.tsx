@@ -143,6 +143,8 @@ export default function EditPopup() {
   const [showPreviewModal, setShowPreviewModal] = React.useState(false);
   const [isDirty, setIsDirty] = React.useState(false);
   const [showSuccessBanner, setShowSuccessBanner] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
 
   // Reset dirty state and show success banner when the action is successful
   useEffect(() => {
@@ -209,11 +211,27 @@ export default function EditPopup() {
   }, [formState, submit]);
 
   const handleDelete = async () => {
-    const response = await fetch(`/app/popups/${popup.id}`, {
-      method: "DELETE",
-    });
-    if (response.ok) {
+    try {
+      setIsDeleting(true);
+      setDeleteError(null);
+      
+      const response = await fetch(`/app/popups/${popup.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete popup');
+      }
+
+      // Close the modal and navigate
+      setShowDeleteModal(false);
       navigate("/app/popups");
+    } catch (error) {
+      console.error('Delete error:', error);
+      setDeleteError(error instanceof Error ? error.message : 'Failed to delete popup');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -385,21 +403,35 @@ export default function EditPopup() {
 
         <Modal
           open={showDeleteModal}
-          onClose={() => setShowDeleteModal(false)}
+          onClose={() => {
+            setShowDeleteModal(false);
+            setDeleteError(null);
+          }}
           title="Delete popup"
           primaryAction={{
             content: "Delete",
             destructive: true,
             onAction: handleDelete,
+            loading: isDeleting,
           }}
           secondaryActions={[
             {
               content: "Cancel",
-              onAction: () => setShowDeleteModal(false),
+              onAction: () => {
+                setShowDeleteModal(false);
+                setDeleteError(null);
+              },
             },
           ]}
         >
           <Modal.Section>
+            {deleteError && (
+              <Box paddingBlock="400">
+                <Banner tone="critical">
+                  <p>{deleteError}</p>
+                </Banner>
+              </Box>
+            )}
             <Text as="p">
               Are you sure you want to delete this popup? This action cannot be undone.
             </Text>
