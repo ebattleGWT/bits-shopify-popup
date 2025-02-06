@@ -121,7 +121,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       },
     });
 
-    return redirect(`/app/popups/${id}`);
+    return json({ success: true });
   } catch (error) {
     console.error("Failed to update popup:", error);
     return json({
