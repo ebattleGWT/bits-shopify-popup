@@ -157,8 +157,8 @@ Monitor the following:
 
 ## License
 
-[Your chosen license]
+MIT
 
 ## Support
 
-For support, please [create an issue](https://github.com/your-username/bits-shopify-popup/issues) or contact [your contact information].
+For support, please [create an issue](https://github.com/ebattleGWT/bits-shopify-popup/issues) or contact [emmanuel@battleitsolutions.com].
