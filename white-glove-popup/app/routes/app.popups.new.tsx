@@ -1,6 +1,6 @@
 import { json, type ActionFunctionArgs, redirect } from "@remix-run/node";
 import { Form, useActionData, useNavigate, useNavigation } from "@remix-run/react";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Page,
   Layout,
@@ -300,114 +300,79 @@ export default function NewPopup() {
   const navigate = useNavigate();
   const isSubmitting = navigation.state === "submitting";
 
-  const [position, setPosition] = React.useState("CENTER");
-  const [theme, setTheme] = React.useState("LIGHT");
-  const [frequency, setFrequency] = React.useState("ALWAYS");
-  const [animation, setAnimation] = React.useState("FADE");
-  const [selectedDevices, setSelectedDevices] = React.useState<string[]>([]);
-  const [selectedPages, setSelectedPages] = React.useState<string[]>([]);
-  const [selectedCountries, setSelectedCountries] = React.useState<string[]>([]);
-  const [{ month, year }, setDate] = React.useState({ month: new Date().getMonth(), year: new Date().getFullYear() });
-  const [startDate, setStartDate] = React.useState<Date | null>(null);
-  const [endDate, setEndDate] = React.useState<Date | null>(null);
-  const [name, setName] = React.useState("");
-  const [title, setTitle] = React.useState("");
-  const [content, setContent] = React.useState("");
-  const [popupType, setPopupType] = React.useState("STANDARD");
-  const [template, setTemplate] = React.useState("");
+  const [position, setPosition] = useState("CENTER");
+  const [theme, setTheme] = useState("LIGHT");
+  const [frequency, setFrequency] = useState("ALWAYS");
+  const [animation, setAnimation] = useState("FADE");
+  const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
+  const [selectedPages, setSelectedPages] = useState<string[]>([]);
+  const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
+  const [{ month, year }, setDate] = useState({ month: new Date().getMonth(), year: new Date().getFullYear() });
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [name, setName] = useState("");
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
+  const [popupType, setPopupType] = useState("STANDARD");
+  const [template, setTemplate] = useState("");
   
   // Design customization state
-  const [width, setWidth] = React.useState("400px");
-  const [height, setHeight] = React.useState("auto");
-  const [borderRadius, setBorderRadius] = React.useState("8px");
-  const [backgroundColor, setBackgroundColor] = React.useState({
+  const [width, setWidth] = useState("400px");
+  const [height, setHeight] = useState("auto");
+  const [borderRadius, setBorderRadius] = useState("8px");
+  const [backgroundColor, setBackgroundColor] = useState({
     hue: 0,
     brightness: 1,
     saturation: 0,
     alpha: 1
   });
-  const [textColor, setTextColor] = React.useState({
+  const [textColor, setTextColor] = useState({
     hue: 0,
     brightness: 0.2,
     saturation: 0,
     alpha: 1
   });
-  const [buttonColor, setButtonColor] = React.useState({
+  const [buttonColor, setButtonColor] = useState({
     hue: 230,
     brightness: 0.77,
     saturation: 0.54,
     alpha: 1
   });
-  const [buttonTextColor, setButtonTextColor] = React.useState({
+  const [buttonTextColor, setButtonTextColor] = useState({
     hue: 0,
     brightness: 1,
     saturation: 0,
     alpha: 1
   });
-  const [fontSize, setFontSize] = React.useState("16px");
-  const [fontFamily, setFontFamily] = React.useState("system-ui");
-  const [overlayColor, setOverlayColor] = React.useState({
+  const [fontSize, setFontSize] = useState("16px");
+  const [fontFamily, setFontFamily] = useState("system-ui");
+  const [overlayColor, setOverlayColor] = useState({
     hue: 0,
     brightness: 0,
     saturation: 0,
     alpha: 0.5
   });
-  const [overlayOpacity, setOverlayOpacity] = React.useState(0.5);
+  const [overlayOpacity, setOverlayOpacity] = useState(0.5);
   
   // Content customization state
-  const [image, setImage] = React.useState("");
-  const [buttonText, setButtonText] = React.useState("Close");
-  const [secondaryButtonText, setSecondaryButtonText] = React.useState("");
+  const [image, setImage] = useState("");
+  const [buttonText, setButtonText] = useState("Close");
+  const [secondaryButtonText, setSecondaryButtonText] = useState("");
   
   // Advanced settings state
-  const [exitIntentEnabled, setExitIntentEnabled] = React.useState(false);
-  const [scrollTriggerEnabled, setScrollTriggerEnabled] = React.useState(false);
-  const [scrollTriggerPercentage, setScrollTriggerPercentage] = React.useState(50);
-  const [cookieExpiration, setCookieExpiration] = React.useState<number | null>(7);
+  const [exitIntentEnabled, setExitIntentEnabled] = useState(false);
+  const [scrollTriggerEnabled, setScrollTriggerEnabled] = useState(false);
+  const [scrollTriggerPercentage, setScrollTriggerPercentage] = useState(50);
+  const [cookieExpiration, setCookieExpiration] = useState<number | null>(7);
   
   // Form settings state
-  const [formFields, setFormFields] = React.useState([]);
-  const [submitEndpoint, setSubmitEndpoint] = React.useState("");
-  const [successMessage, setSuccessMessage] = React.useState("Thank you for subscribing!");
-  const [errorMessage, setErrorMessage] = React.useState("Something went wrong. Please try again.");
+  const [formFields, setFormFields] = useState([]);
+  const [submitEndpoint, setSubmitEndpoint] = useState("");
+  const [successMessage, setSuccessMessage] = useState("Thank you for subscribing!");
+  const [errorMessage, setErrorMessage] = useState("Something went wrong. Please try again.");
 
-  const [selectedTab, setSelectedTab] = React.useState(0);
-
-  const tabs = [
-    {
-      id: 'basic',
-      content: 'Basic Info',
-      accessibilityLabel: 'Basic information',
-      panelID: 'basic-content',
-    },
-    {
-      id: 'design',
-      content: 'Design',
-      accessibilityLabel: 'Design customization',
-      panelID: 'design-content',
-    },
-    {
-      id: 'content',
-      content: 'Content',
-      accessibilityLabel: 'Content settings',
-      panelID: 'content-content',
-    },
-    {
-      id: 'targeting',
-      content: 'Targeting',
-      accessibilityLabel: 'Targeting options',
-      panelID: 'targeting-content',
-    },
-    {
-      id: 'advanced',
-      content: 'Advanced',
-      accessibilityLabel: 'Advanced settings',
-      panelID: 'advanced-content',
-    },
-  ];
-
+  const [selectedTab, setSelectedTab] = useState(0);
   const [delay, setDelay] = useState<number | null>(0);
-
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   // Convert HSBA color to CSS rgba
