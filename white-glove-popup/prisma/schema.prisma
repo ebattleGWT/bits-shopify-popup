@@ -40,6 +40,34 @@ model Popup {
   updatedAt   DateTime  @updatedAt
   shop        String    // Store the Shopify shop domain
   
+  // New fields for enhanced customization
+  popupType   String    @default("STANDARD") // STANDARD, NEWSLETTER, EXIT_INTENT, ANNOUNCEMENT, PROMOTION
+  template    String?   // For predefined templates
+  
+  // Design customization
+  width       String?   // Can be px or %
+  height      String?   // Can be px or %
+  borderRadius String?
+  backgroundColor String?
+  textColor   String?
+  buttonColor String?
+  buttonTextColor String?
+  fontSize    String?
+  fontFamily  String?
+  overlayColor String?
+  overlayOpacity Float?
+  
+  // Content customization
+  image       String?   // URL for popup image
+  buttonText  String?
+  secondaryButtonText String?
+  
+  // Advanced settings
+  exitIntentEnabled Boolean @default(false)
+  scrollTriggerEnabled Boolean @default(false)
+  scrollTriggerPercentage Int @default(50)
+  cookieExpiration Int? // Days until cookie expires
+  
   // Targeting options
   showOnPages String?   // JSON array of page URLs
   deviceTypes String?   // JSON array: MOBILE, DESKTOP, TABLET
@@ -49,6 +77,14 @@ model Popup {
   delay       Int       @default(0) // Delay in seconds before showing
   frequency   String    @default("ALWAYS") // ALWAYS, ONCE, DAILY, WEEKLY
   animation   String    @default("FADE") // FADE, SLIDE, BOUNCE
+  
+  // Form settings (for newsletter/lead generation)
+  formFields  String?   // JSON array of form field configurations
+  submitEndpoint String? // Custom endpoint for form submission
+  successMessage String?
+  errorMessage String?
+  
+  // Relationships
   events    PopupEvent[]
   metrics   PopupMetrics?
 }
