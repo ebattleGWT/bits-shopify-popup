@@ -1,6 +1,6 @@
 import { json, type ActionFunctionArgs, redirect } from "@remix-run/node";
 import { Form, useActionData, useNavigate, useNavigation } from "@remix-run/react";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Page,
   Layout,
@@ -17,9 +17,23 @@ import {
   InlineStack,
   BlockStack,
   Banner,
+  ColorPicker,
+  RangeSlider,
+  Icon,
+  Tabs,
+  LegacyStack,
+  Divider,
+  Modal,
+  type TextFieldProps,
+  type ColorPickerProps,
+  type RangeSliderProps,
+  type TextProps,
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import { ImageIcon } from "@shopify/polaris-icons";
+import { popupTemplates } from "../templates/popup-templates";
+import type { Prisma } from "@prisma/client";
 
 type ActionData = {
   errors?: {
@@ -27,56 +41,246 @@ type ActionData = {
     name?: string;
     title?: string;
     content?: string;
+    width?: string;
+    height?: string;
+    fontSize?: string;
+    image?: string;
+    delay?: string;
+    cookieExpiration?: string;
+    scrollTriggerPercentage?: string;
+    deviceTypes?: string;
+    showOnPages?: string;
+    countries?: string;
   };
   success?: boolean;
 };
+
+interface HSBAColor {
+  hue: number;
+  saturation: number;
+  brightness: number;
+  alpha: number;
+}
+
+type PopupType = "STANDARD" | "NEWSLETTER" | "EXIT_INTENT" | "ANNOUNCEMENT" | "PROMOTION";
+
+// Add validation functions
+function validateDimension(value: string): string | undefined {
+  if (!value) return undefined;
+  if (!value.match(/^\d+(%|px|em|rem|vh|vw)$|^auto$/)) {
+    return "Invalid format. Use values like '400px', '90%', or 'auto'";
+  }
+  return undefined;
+}
+
+function validateFontSize(value: string): string | undefined {
+  if (!value) return undefined;
+  if (!value.match(/^\d+(%|px|em|rem|pt)$/)) {
+    return "Invalid format. Use values like '16px', '1.2em', or '12pt'";
+  }
+  return undefined;
+}
+
+function validateUrl(value: string): string | undefined {
+  if (!value) return undefined;
+  try {
+    new URL(value);
+    return undefined;
+  } catch {
+    return "Invalid URL format";
+  }
+}
+
+function validateNumber(value: string | null, min: number, max: number): string | undefined {
+  if (!value) return undefined;
+  const num = parseInt(value, 10);
+  if (isNaN(num)) return "Must be a number";
+  if (num < min || num > max) return `Must be between ${min} and ${max}`;
+  return undefined;
+}
 
 export async function action({ request }: ActionFunctionArgs) {
   const { session } = await authenticate.admin(request);
 
   const formData = await request.formData();
+  
+  // Basic Information
   const name = formData.get("name");
   const title = formData.get("title");
   const content = formData.get("content");
-  const position = formData.get("position");
-  const theme = formData.get("theme");
+  const popupType = formData.get("popupType") || "STANDARD";
+  const template = formData.get("template");
+  
+  // Design customization
+  const width = formData.get("width") || "400px";
+  const height = formData.get("height") || "auto";
+  const borderRadius = formData.get("borderRadius") || "8px";
+  const backgroundColor = formData.get("backgroundColor");
+  const textColor = formData.get("textColor");
+  const buttonColor = formData.get("buttonColor");
+  const buttonTextColor = formData.get("buttonTextColor");
+  const fontSize = formData.get("fontSize") || "16px";
+  const fontFamily = formData.get("fontFamily") || "system-ui";
+  const overlayColor = formData.get("overlayColor");
+  const overlayOpacity = formData.get("overlayOpacity") ? parseFloat(formData.get("overlayOpacity") as string) : 0.5;
+  
+  // Content customization
+  const image = formData.get("image") || "";
+  const buttonText = formData.get("buttonText") || "Close";
+  const secondaryButtonText = formData.get("secondaryButtonText") || "";
+  
+  // Form settings
+  const formFields = formData.get("formFields");
+  const submitEndpoint = formData.get("submitEndpoint");
+  const successMessage = formData.get("successMessage") || "Thank you for subscribing!";
+  const errorMessage = formData.get("errorMessage") || "Something went wrong. Please try again.";
+  
+  // Display settings
+  const position = formData.get("position") || "CENTER";
+  const theme = formData.get("theme") || "LIGHT";
+  const customCss = formData.get("customCss");
+  const animation = formData.get("animation") || "FADE";
+  const delay = formData.get("delay");
+  const frequency = formData.get("frequency") || "ALWAYS";
   const startDate = formData.get("startDate");
   const endDate = formData.get("endDate");
-  const delay = formData.get("delay");
-  const frequency = formData.get("frequency");
-  const animation = formData.get("animation");
+  
+  // Targeting options
   const deviceTypes = formData.getAll("deviceTypes");
   const showOnPages = formData.getAll("showOnPages");
   const countries = formData.getAll("countries");
+  
+  // Advanced settings
+  const exitIntentEnabled = formData.get("exitIntentEnabled") === "true";
+  const scrollTriggerEnabled = formData.get("scrollTriggerEnabled") === "true";
+  const scrollTriggerPercentage = formData.get("scrollTriggerPercentage") ? 
+    parseInt(formData.get("scrollTriggerPercentage") as string, 10) : 50;
+  const cookieExpiration = formData.get("cookieExpiration") ? 
+    parseInt(formData.get("cookieExpiration") as string, 10) : null;
 
-  // Validate required fields
+  // Validate all fields
   const errors: Record<string, string> = {};
+  
+  // Required fields
   if (!name) errors.name = "Name is required";
   if (!title) errors.title = "Title is required";
   if (!content) errors.content = "Content is required";
+  
+  // Dimension validations
+  const widthError = validateDimension(width as string);
+  if (widthError) errors.width = widthError;
+  
+  const heightError = validateDimension(height as string);
+  if (heightError) errors.height = heightError;
+  
+  // Font size validation
+  const fontSizeError = validateFontSize(fontSize as string);
+  if (fontSizeError) errors.fontSize = fontSizeError;
+  
+  // Image URL validation
+  if (image) {
+    const imageError = validateUrl(image as string);
+    if (imageError) errors.image = imageError;
+  }
+  
+  // Number validations
+  if (delay) {
+    const delayError = validateNumber(delay as string, 0, 60);
+    if (delayError) errors.delay = delayError;
+  }
+  
+  if (cookieExpiration) {
+    const cookieError = validateNumber(cookieExpiration.toString(), 1, 365);
+    if (cookieError) errors.cookieExpiration = cookieError;
+  }
+  
+  if (scrollTriggerEnabled) {
+    const scrollError = validateNumber(scrollTriggerPercentage.toString(), 0, 100);
+    if (scrollError) errors.scrollTriggerPercentage = scrollError;
+  }
+  
+  // Targeting validations
+  if (deviceTypes.length === 0) {
+    errors.deviceTypes = "Select at least one device type";
+  }
+  
+  // URL format validation for pages
+  if (showOnPages.length > 0) {
+    const invalidUrls = showOnPages.some(page => validateUrl(page as string));
+    if (invalidUrls) errors.showOnPages = "Invalid URL format in page list";
+  }
+  
+  // Country code validation
+  if (countries.length > 0) {
+    const invalidCodes = countries.some(code => !code.toString().match(/^[A-Z]{2}$/));
+    if (invalidCodes) errors.countries = "Invalid country code format (use ISO 2-letter codes)";
+  }
 
   if (Object.keys(errors).length > 0) {
     return json({ errors });
   }
 
   try {
+    const createData: Prisma.PopupCreateInput = {
+      // Basic Information
+      name: name as string,
+      title: title as string,
+      content: content as string,
+      popupType: popupType as string,
+      template: template as string || null,
+      
+      // Design customization
+      width: width as string,
+      height: height as string,
+      borderRadius: borderRadius as string,
+      backgroundColor: backgroundColor as string || null,
+      textColor: textColor as string || null,
+      buttonColor: buttonColor as string || null,
+      buttonTextColor: buttonTextColor as string || null,
+      fontSize: fontSize as string,
+      fontFamily: fontFamily as string,
+      overlayColor: overlayColor as string || null,
+      overlayOpacity,
+      
+      // Content customization
+      image: image as string || null,
+      buttonText: buttonText as string,
+      secondaryButtonText: secondaryButtonText as string || null,
+      
+      // Form settings
+      formFields: formFields as string || null,
+      submitEndpoint: submitEndpoint as string || null,
+      successMessage: successMessage as string,
+      errorMessage: errorMessage as string,
+      
+      // Display settings
+      position: position as string,
+      theme: theme as string,
+      customCss: customCss as string || null,
+      animation: animation as string,
+      delay: delay ? parseInt(delay.toString(), 10) : 0,
+      frequency: frequency as string,
+      startDate: startDate ? new Date(startDate.toString()) : null,
+      endDate: endDate ? new Date(endDate.toString()) : null,
+      
+      // Targeting options
+      deviceTypes: deviceTypes.length ? JSON.stringify(deviceTypes) : null,
+      showOnPages: showOnPages.length ? JSON.stringify(showOnPages) : null,
+      countries: countries.length ? JSON.stringify(countries) : null,
+      
+      // Advanced settings
+      exitIntentEnabled,
+      scrollTriggerEnabled,
+      scrollTriggerPercentage,
+      cookieExpiration,
+      
+      // Shop and status
+      shop: session.shop,
+      isEnabled: true,
+    };
+
     const popup = await prisma.popup.create({
-      data: {
-        name: name as string,
-        title: title as string,
-        content: content as string,
-        position: position as string || "CENTER",
-        theme: theme as string || "LIGHT",
-        startDate: startDate ? new Date(startDate as string) : null,
-        endDate: endDate ? new Date(endDate as string) : null,
-        delay: delay ? parseInt(delay as string, 10) : 0,
-        frequency: frequency as string || "ALWAYS",
-        animation: animation as string || "FADE",
-        deviceTypes: deviceTypes.length ? JSON.stringify(deviceTypes) : null,
-        showOnPages: showOnPages.length ? JSON.stringify(showOnPages) : null,
-        countries: countries.length ? JSON.stringify(countries) : null,
-        shop: session.shop,
-      },
+      data: createData,
     });
 
     return redirect("/app/popups");
@@ -109,6 +313,341 @@ export default function NewPopup() {
   const [name, setName] = React.useState("");
   const [title, setTitle] = React.useState("");
   const [content, setContent] = React.useState("");
+  const [popupType, setPopupType] = React.useState("STANDARD");
+  const [template, setTemplate] = React.useState("");
+  
+  // Design customization state
+  const [width, setWidth] = React.useState("400px");
+  const [height, setHeight] = React.useState("auto");
+  const [borderRadius, setBorderRadius] = React.useState("8px");
+  const [backgroundColor, setBackgroundColor] = React.useState({
+    hue: 0,
+    brightness: 1,
+    saturation: 0,
+    alpha: 1
+  });
+  const [textColor, setTextColor] = React.useState({
+    hue: 0,
+    brightness: 0.2,
+    saturation: 0,
+    alpha: 1
+  });
+  const [buttonColor, setButtonColor] = React.useState({
+    hue: 230,
+    brightness: 0.77,
+    saturation: 0.54,
+    alpha: 1
+  });
+  const [buttonTextColor, setButtonTextColor] = React.useState({
+    hue: 0,
+    brightness: 1,
+    saturation: 0,
+    alpha: 1
+  });
+  const [fontSize, setFontSize] = React.useState("16px");
+  const [fontFamily, setFontFamily] = React.useState("system-ui");
+  const [overlayColor, setOverlayColor] = React.useState({
+    hue: 0,
+    brightness: 0,
+    saturation: 0,
+    alpha: 0.5
+  });
+  const [overlayOpacity, setOverlayOpacity] = React.useState(0.5);
+  
+  // Content customization state
+  const [image, setImage] = React.useState("");
+  const [buttonText, setButtonText] = React.useState("Close");
+  const [secondaryButtonText, setSecondaryButtonText] = React.useState("");
+  
+  // Advanced settings state
+  const [exitIntentEnabled, setExitIntentEnabled] = React.useState(false);
+  const [scrollTriggerEnabled, setScrollTriggerEnabled] = React.useState(false);
+  const [scrollTriggerPercentage, setScrollTriggerPercentage] = React.useState(50);
+  const [cookieExpiration, setCookieExpiration] = React.useState<number | null>(7);
+  
+  // Form settings state
+  const [formFields, setFormFields] = React.useState([]);
+  const [submitEndpoint, setSubmitEndpoint] = React.useState("");
+  const [successMessage, setSuccessMessage] = React.useState("Thank you for subscribing!");
+  const [errorMessage, setErrorMessage] = React.useState("Something went wrong. Please try again.");
+
+  const [selectedTab, setSelectedTab] = React.useState(0);
+
+  const tabs = [
+    {
+      id: 'basic',
+      content: 'Basic Info',
+      accessibilityLabel: 'Basic information',
+      panelID: 'basic-content',
+    },
+    {
+      id: 'design',
+      content: 'Design',
+      accessibilityLabel: 'Design customization',
+      panelID: 'design-content',
+    },
+    {
+      id: 'content',
+      content: 'Content',
+      accessibilityLabel: 'Content settings',
+      panelID: 'content-content',
+    },
+    {
+      id: 'targeting',
+      content: 'Targeting',
+      accessibilityLabel: 'Targeting options',
+      panelID: 'targeting-content',
+    },
+    {
+      id: 'advanced',
+      content: 'Advanced',
+      accessibilityLabel: 'Advanced settings',
+      panelID: 'advanced-content',
+    },
+  ];
+
+  const [delay, setDelay] = useState<number | null>(0);
+
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+  // Convert HSBA color to CSS rgba
+  const hsbaToRgba = (color: HSBAColor) => {
+    const { hue, saturation, brightness, alpha } = color;
+    const h = hue / 360;
+    const s = saturation;
+    const v = brightness;
+    
+    let r, g, b;
+    
+    const i = Math.floor(h * 6);
+    const f = h * 6 - i;
+    const p = v * (1 - s);
+    const q = v * (1 - f * s);
+    const t = v * (1 - (1 - f) * s);
+    
+    switch (i % 6) {
+      case 0: r = v; g = t; b = p; break;
+      case 1: r = q; g = v; b = p; break;
+      case 2: r = p; g = v; b = t; break;
+      case 3: r = p; g = q; b = v; break;
+      case 4: r = t; g = p; b = v; break;
+      case 5: r = v; g = p; b = q; break;
+      default: r = v; g = t; b = p;
+    }
+    
+    return `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${alpha})`;
+  };
+
+  // Preview modal content
+  const previewModalContent = (
+    <div
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: '500px',
+        backgroundColor: '#f6f6f7',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Overlay */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: hsbaToRgba(overlayColor),
+          opacity: overlayOpacity,
+        }}
+      />
+      
+      {/* Popup */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: width,
+          height: height === 'auto' ? 'auto' : height,
+          backgroundColor: hsbaToRgba(backgroundColor),
+          borderRadius: borderRadius,
+          padding: '20px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+          animation: `${animation.toLowerCase()} 0.3s ease-in-out`,
+        }}
+      >
+        {/* Close button */}
+        <button
+          style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '20px',
+            color: hsbaToRgba(textColor),
+          }}
+          onClick={() => setShowPreviewModal(false)}
+        >
+          ×
+        </button>
+        
+        {/* Content */}
+        <div
+          style={{
+            color: hsbaToRgba(textColor),
+            fontFamily: fontFamily,
+            fontSize: fontSize,
+          }}
+        >
+          {image && (
+            <img
+              src={image}
+              alt="Popup image"
+              style={{
+                maxWidth: '100%',
+                height: 'auto',
+                marginBottom: '15px',
+              }}
+            />
+          )}
+          
+          <h2 style={{ marginBottom: '10px' }}>{title}</h2>
+          <div style={{ marginBottom: '20px' }}>{content}</div>
+          
+          {/* Buttons */}
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+            {secondaryButtonText && (
+              <button
+                style={{
+                  padding: '8px 16px',
+                  border: `1px solid ${hsbaToRgba(buttonColor)}`,
+                  borderRadius: '4px',
+                  background: 'transparent',
+                  color: hsbaToRgba(buttonColor),
+                  cursor: 'pointer',
+                }}
+              >
+                {secondaryButtonText}
+              </button>
+            )}
+            <button
+              style={{
+                padding: '8px 16px',
+                border: 'none',
+                borderRadius: '4px',
+                backgroundColor: hsbaToRgba(buttonColor),
+                color: hsbaToRgba(buttonTextColor),
+                cursor: 'pointer',
+              }}
+            >
+              {buttonText}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderTextField = (
+    label: string,
+    value: string,
+    onChange: (value: string) => void,
+    helpText: string,
+    multiline?: number
+  ) => (
+    <TextField
+      label={label}
+      value={value}
+      onChange={onChange}
+      helpText={helpText}
+      autoComplete="off"
+      multiline={multiline}
+    />
+  );
+
+  const renderColorPicker = (
+    label: string,
+    color: HSBAColor,
+    onChange: (color: HSBAColor) => void
+  ) => (
+    <BlockStack>
+      <Text as="span" variant="bodyMd">{label}</Text>
+      <ColorPicker
+        onChange={onChange}
+        color={color}
+      />
+    </BlockStack>
+  );
+
+  const handleRangeSliderChange = (value: number | [number, number], id?: string) => {
+    if (typeof value === 'number') {
+      const newValue = Math.min(Math.max(value, 0), 1);
+      setOverlayOpacity(newValue);
+      setOverlayColor(prev => ({
+        ...prev,
+        alpha: newValue
+      }));
+    }
+  };
+
+  const handleScrollTriggerChange = (value: number | [number, number], id?: string) => {
+    if (typeof value === 'number') {
+      const newValue = Math.min(Math.max(value, 0), 100);
+      setScrollTriggerPercentage(newValue);
+    }
+  };
+
+  const defaultColor: HSBAColor = {
+    hue: 0,
+    saturation: 0,
+    brightness: 1,
+    alpha: 1
+  };
+
+  const handleTemplateChange = (templateId: string) => {
+    if (!templateId) return;
+
+    const template = popupTemplates[templateId];
+    if (!template) return;
+
+    // Update all state values based on the template
+    setPopupType(template.type);
+    setName(template.name);
+    setTitle(template.title);
+    setContent(template.content);
+    
+    // Update style settings
+    setWidth(template.style.width);
+    setHeight(template.style.height);
+    setBorderRadius(template.style.borderRadius);
+    setBackgroundColor(template.style.backgroundColor);
+    setTextColor(template.style.textColor);
+    setButtonColor(template.style.buttonColor);
+    setButtonTextColor(template.style.buttonTextColor);
+    setFontSize(template.style.fontSize);
+    setFontFamily(template.style.fontFamily);
+    
+    // Update display settings
+    setPosition(template.settings.position);
+    setAnimation(template.settings.animation);
+    setDelay(template.settings.delay);
+    setFrequency(template.settings.frequency);
+    
+    // Update advanced settings if they exist
+    if (template.settings.exitIntentEnabled !== undefined) {
+      setExitIntentEnabled(template.settings.exitIntentEnabled);
+    }
+    if (template.settings.scrollTriggerEnabled !== undefined) {
+      setScrollTriggerEnabled(template.settings.scrollTriggerEnabled);
+    }
+    if (template.settings.scrollTriggerPercentage !== undefined) {
+      setScrollTriggerPercentage(template.settings.scrollTriggerPercentage);
+    }
+  };
 
   return (
     <Page
@@ -117,6 +656,12 @@ export default function NewPopup() {
         content: "Popups",
         onAction: () => navigate("/app/popups"),
       }}
+      secondaryActions={[
+        {
+          content: "Preview",
+          onAction: () => setShowPreviewModal(true),
+        },
+      ]}
     >
       <Layout>
         <Layout.Section>
@@ -127,14 +672,51 @@ export default function NewPopup() {
           )}
 
           <Form method="post">
-            <Layout>
-              <Layout.Section>
-                <Card>
-                  <BlockStack gap="400">
+            <Card>
+              <BlockStack gap="400">
+                <Box padding="400">
+                  <Select
+                    label="Start from Template"
+                    options={[
+                      { label: "Choose a template...", value: "" },
+                      ...Object.entries(popupTemplates).map(([id, template]) => ({
+                        label: template.name,
+                        value: id,
+                      })),
+                    ]}
+                    onChange={handleTemplateChange}
+                    helpText="Select a template to start with, or create from scratch"
+                  />
+                </Box>
+              </BlockStack>
+            </Card>
+
+            <Tabs
+              tabs={tabs}
+              selected={selectedTab}
+              onSelect={setSelectedTab}
+              fitted
+            >
+              <Card>
+                <BlockStack gap="400">
+                  {selectedTab === 0 && (
                     <Box padding="400">
                       <BlockStack gap="400">
                         <Text variant="headingMd" as="h3">Basic Information</Text>
                         <FormLayout>
+                          <Select
+                            label="Popup Type"
+                            options={[
+                              { label: "Standard Popup", value: "STANDARD" },
+                              { label: "Newsletter", value: "NEWSLETTER" },
+                              { label: "Exit Intent", value: "EXIT_INTENT" },
+                              { label: "Announcement", value: "ANNOUNCEMENT" },
+                              { label: "Promotion", value: "PROMOTION" },
+                            ]}
+                            value={popupType}
+                            onChange={(value) => setPopupType(value)}
+                            helpText="Choose the type of popup you want to create"
+                          />
                           <TextField
                             label="Name"
                             name="name"
@@ -166,120 +748,141 @@ export default function NewPopup() {
                         </FormLayout>
                       </BlockStack>
                     </Box>
+                  )}
 
+                  {selectedTab === 1 && (
                     <Box padding="400">
                       <BlockStack gap="400">
-                        <Text variant="headingMd" as="h3">Appearance</Text>
+                        <Text variant="headingMd" as="h3">Design Customization</Text>
                         <FormLayout>
-                          <Select
-                            label="Position"
-                            name="position"
-                            options={[
-                              { label: "Center", value: "CENTER" },
-                              { label: "Top", value: "TOP" },
-                              { label: "Bottom", value: "BOTTOM" },
-                              { label: "Left", value: "LEFT" },
-                              { label: "Right", value: "RIGHT" },
-                            ]}
-                            value={position}
-                            onChange={setPosition}
-                          />
-                          <Select
-                            label="Theme"
-                            name="theme"
-                            options={[
-                              { label: "Light", value: "LIGHT" },
-                              { label: "Dark", value: "DARK" },
-                              { label: "Custom", value: "CUSTOM" },
-                            ]}
-                            value={theme}
-                            onChange={setTheme}
-                          />
-                          <Select
-                            label="Animation"
-                            name="animation"
-                            options={[
-                              { label: "Fade", value: "FADE" },
-                              { label: "Slide", value: "SLIDE" },
-                              { label: "Bounce", value: "BOUNCE" },
-                            ]}
-                            value={animation}
-                            onChange={setAnimation}
+                          <Grid>
+                            <Grid.Cell columnSpan={{ xs: 6, sm: 3, md: 3, lg: 3 }}>
+                              {renderTextField("Width", width, setWidth, "e.g., 400px or 90%")}
+                            </Grid.Cell>
+                            <Grid.Cell columnSpan={{ xs: 6, sm: 3, md: 3, lg: 3 }}>
+                              {renderTextField("Height", height, setHeight, "e.g., 300px or auto")}
+                            </Grid.Cell>
+                            <Grid.Cell columnSpan={{ xs: 6, sm: 3, md: 3, lg: 3 }}>
+                              {renderTextField("Border Radius", borderRadius, setBorderRadius, "e.g., 8px")}
+                            </Grid.Cell>
+                            <Grid.Cell columnSpan={{ xs: 6, sm: 3, md: 3, lg: 3 }}>
+                              {renderTextField("Font Size", fontSize, setFontSize, "e.g., 16px")}
+                            </Grid.Cell>
+                          </Grid>
+
+                          <Divider />
+
+                          <Text variant="headingMd" as="h3">Colors</Text>
+                          <Grid>
+                            <Grid.Cell columnSpan={{ xs: 6, sm: 3, md: 3, lg: 3 }}>
+                              <BlockStack gap="200">
+                                <Text as="span" variant="bodyMd">Background Color</Text>
+                                <ColorPicker onChange={setBackgroundColor} color={backgroundColor} />
+                              </BlockStack>
+                            </Grid.Cell>
+                            <Grid.Cell columnSpan={{ xs: 6, sm: 3, md: 3, lg: 3 }}>
+                              <BlockStack gap="200">
+                                <Text as="span" variant="bodyMd">Text Color</Text>
+                                <ColorPicker onChange={setTextColor} color={textColor} />
+                              </BlockStack>
+                            </Grid.Cell>
+                            <Grid.Cell columnSpan={{ xs: 6, sm: 3, md: 3, lg: 3 }}>
+                              <BlockStack gap="200">
+                                <Text as="span" variant="bodyMd">Button Color</Text>
+                                <ColorPicker onChange={setButtonColor} color={buttonColor} />
+                              </BlockStack>
+                            </Grid.Cell>
+                            <Grid.Cell columnSpan={{ xs: 6, sm: 3, md: 3, lg: 3 }}>
+                              <BlockStack gap="200">
+                                <Text as="span" variant="bodyMd">Button Text Color</Text>
+                                <ColorPicker onChange={setButtonTextColor} color={buttonTextColor} />
+                              </BlockStack>
+                            </Grid.Cell>
+                          </Grid>
+
+                          <Divider />
+
+                          <Text variant="headingMd" as="h3">Overlay</Text>
+                          <Grid>
+                            <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 6 }}>
+                              <BlockStack gap="200">
+                                <Text as="span" variant="bodyMd">Overlay Color</Text>
+                                <ColorPicker onChange={setOverlayColor} color={overlayColor} />
+                              </BlockStack>
+                            </Grid.Cell>
+                            <Grid.Cell columnSpan={{ xs: 6, sm: 6, md: 6, lg: 6 }}>
+                              <RangeSlider
+                                label="Overlay Opacity"
+                                value={overlayOpacity}
+                                onChange={handleRangeSliderChange}
+                                output
+                                min={0}
+                                max={1}
+                                step={0.1}
+                              />
+                            </Grid.Cell>
+                          </Grid>
+                        </FormLayout>
+                      </BlockStack>
+                    </Box>
+                  )}
+
+                  {selectedTab === 2 && (
+                    <Box padding="400">
+                      <BlockStack gap="400">
+                        <Text variant="headingMd" as="h3">Content Settings</Text>
+                        <FormLayout>
+                          <TextField
+                            label="Image URL"
+                            value={image}
+                            onChange={setImage}
+                            prefix={<Icon source={ImageIcon} />}
+                            helpText="Enter the URL of your image"
+                            autoComplete="off"
                           />
                           <TextField
-                            label="Delay (seconds)"
-                            name="delay"
-                            type="number"
-                            min="0"
-                            value="0"
+                            label="Button Text"
+                            value={buttonText}
+                            onChange={setButtonText}
+                            helpText="Text for the primary button"
                             autoComplete="off"
-                            helpText="Time to wait before showing the popup"
                           />
+                          <TextField
+                            label="Secondary Button Text"
+                            value={secondaryButtonText}
+                            onChange={setSecondaryButtonText}
+                            helpText="Text for the secondary button (optional)"
+                            autoComplete="off"
+                          />
+                          {popupType === "NEWSLETTER" && (
+                            <>
+                              <TextField
+                                label="Success Message"
+                                value={successMessage}
+                                onChange={setSuccessMessage}
+                                multiline={2}
+                                helpText="Message shown after successful form submission"
+                                autoComplete="off"
+                              />
+                              <TextField
+                                label="Error Message"
+                                value={errorMessage}
+                                onChange={setErrorMessage}
+                                multiline={2}
+                                helpText="Message shown if form submission fails"
+                                autoComplete="off"
+                              />
+                            </>
+                          )}
                         </FormLayout>
                       </BlockStack>
                     </Box>
+                  )}
 
+                  {selectedTab === 3 && (
                     <Box padding="400">
                       <BlockStack gap="400">
-                        <Text variant="headingMd" as="h3">Display Settings</Text>
-                        <FormLayout>
-                          <Select
-                            label="Frequency"
-                            name="frequency"
-                            options={[
-                              { label: "Always", value: "ALWAYS" },
-                              { label: "Once", value: "ONCE" },
-                              { label: "Daily", value: "DAILY" },
-                              { label: "Weekly", value: "WEEKLY" },
-                            ]}
-                            value={frequency}
-                            onChange={setFrequency}
-                            helpText="How often to show the popup to the same visitor"
-                          />
-                          <Box padding="400">
-                            <Text variant="headingMd" as="h3">Schedule</Text>
-                            <Grid>
-                              <Grid.Cell columnSpan={{ xs: 6 }}>
-                                <DatePicker
-                                  month={month}
-                                  year={year}
-                                  onChange={({ start }) => {
-                                    setStartDate(start);
-                                    const startInput = document.createElement('input');
-                                    startInput.type = 'hidden';
-                                    startInput.name = 'startDate';
-                                    startInput.value = start.toISOString();
-                                    document.forms[0].appendChild(startInput);
-                                  }}
-                                  onMonthChange={(month, year) => setDate({ month, year })}
-                                  selected={startDate ? { start: startDate, end: startDate } : undefined}
-                                />
-                              </Grid.Cell>
-                              <Grid.Cell columnSpan={{ xs: 6 }}>
-                                <DatePicker
-                                  month={month}
-                                  year={year}
-                                  onChange={({ start }) => {
-                                    setEndDate(start);
-                                    const endInput = document.createElement('input');
-                                    endInput.type = 'hidden';
-                                    endInput.name = 'endDate';
-                                    endInput.value = start.toISOString();
-                                    document.forms[0].appendChild(endInput);
-                                  }}
-                                  onMonthChange={(month, year) => setDate({ month, year })}
-                                  selected={endDate ? { start: endDate, end: endDate } : undefined}
-                                />
-                              </Grid.Cell>
-                            </Grid>
-                          </Box>
-                        </FormLayout>
-                      </BlockStack>
-                    </Box>
-
-                    <Box padding="400">
-                      <BlockStack gap="400">
-                        <Text variant="headingMd" as="h3">Targeting</Text>
+                        <Text variant="headingMd" as="h3">Targeting Options</Text>
                         <FormLayout>
                           <Box padding="400">
                             <Text variant="headingMd" as="h3">Device Types</Text>
@@ -294,15 +897,6 @@ export default function NewPopup() {
                                       ? [...selectedDevices, device]
                                       : selectedDevices.filter((d) => d !== device);
                                     setSelectedDevices(newDevices);
-                                    const input = document.createElement('input');
-                                    input.type = 'hidden';
-                                    input.name = 'deviceTypes';
-                                    input.value = device;
-                                    if (checked) {
-                                      document.forms[0].appendChild(input);
-                                    } else {
-                                      document.forms[0].querySelector(`input[name="deviceTypes"][value="${device}"]`)?.remove();
-                                    }
                                   }}
                                 />
                               ))}
@@ -311,59 +905,113 @@ export default function NewPopup() {
 
                           <TextField
                             label="Show on Pages"
-                            name="showOnPages"
-                            helpText="Enter page URLs (one per line)"
-                            multiline={3}
-                            autoComplete="off"
+                            value={selectedPages.join('\n')}
                             onChange={(value) => {
                               const pages = value.split('\n').filter(Boolean);
                               setSelectedPages(pages);
-                              document.forms[0].querySelectorAll('input[name="showOnPages"]').forEach(el => el.remove());
-                              pages.forEach(page => {
-                                const input = document.createElement('input');
-                                input.type = 'hidden';
-                                input.name = 'showOnPages';
-                                input.value = page;
-                                document.forms[0].appendChild(input);
-                              });
                             }}
+                            multiline={3}
+                            helpText="Enter page URLs (one per line)"
+                            autoComplete="off"
                           />
 
                           <TextField
                             label="Countries"
-                            name="countries"
-                            helpText="Enter country codes (one per line, e.g., US, CA)"
-                            multiline={3}
-                            autoComplete="off"
+                            value={selectedCountries.join('\n')}
                             onChange={(value) => {
                               const countries = value.split('\n').filter(Boolean);
                               setSelectedCountries(countries);
-                              document.forms[0].querySelectorAll('input[name="countries"]').forEach(el => el.remove());
-                              countries.forEach(country => {
-                                const input = document.createElement('input');
-                                input.type = 'hidden';
-                                input.name = 'countries';
-                                input.value = country;
-                                document.forms[0].appendChild(input);
-                              });
                             }}
+                            multiline={3}
+                            helpText="Enter country codes (one per line, e.g., US, CA)"
+                            autoComplete="off"
                           />
                         </FormLayout>
                       </BlockStack>
                     </Box>
-                  </BlockStack>
-                </Card>
-              </Layout.Section>
+                  )}
 
-              <Layout.Section>
-                <Button variant="primary" submit disabled={isSubmitting}>
-                  {isSubmitting ? "Creating..." : "Create Popup"}
-                </Button>
-              </Layout.Section>
-            </Layout>
+                  {selectedTab === 4 && (
+                    <Box padding="400">
+                      <BlockStack gap="400">
+                        <Text variant="headingMd" as="h3">Advanced Settings</Text>
+                        <FormLayout>
+                          <Checkbox
+                            label="Enable Exit Intent"
+                            checked={exitIntentEnabled}
+                            onChange={setExitIntentEnabled}
+                            helpText="Show popup when visitor attempts to leave the page"
+                          />
+                          <Checkbox
+                            label="Enable Scroll Trigger"
+                            checked={scrollTriggerEnabled}
+                            onChange={setScrollTriggerEnabled}
+                            helpText="Show popup when visitor scrolls to a certain point"
+                          />
+                          {scrollTriggerEnabled && (
+                            <RangeSlider
+                              label="Scroll Percentage"
+                              value={scrollTriggerPercentage}
+                              onChange={handleScrollTriggerChange}
+                              min={0}
+                              max={100}
+                              helpText="Show popup when visitor scrolls this percentage of the page"
+                            />
+                          )}
+                          <TextField
+                            label="Cookie Expiration (days)"
+                            type="number"
+                            value={cookieExpiration?.toString() || ""}
+                            onChange={(value) => setCookieExpiration(value ? parseInt(value, 10) : null)}
+                            helpText="Number of days before showing the popup again to the same visitor"
+                            autoComplete="off"
+                          />
+                          <Select
+                            label="Animation"
+                            options={[
+                              { label: "Fade", value: "FADE" },
+                              { label: "Slide", value: "SLIDE" },
+                              { label: "Bounce", value: "BOUNCE" },
+                            ]}
+                            value={animation}
+                            onChange={setAnimation}
+                          />
+                          <TextField
+                            label="Delay (seconds)"
+                            type="number"
+                            min="0"
+                            value={delay?.toString() || ""}
+                            onChange={(value) => setDelay(value ? parseInt(value, 10) : null)}
+                            helpText="Time to wait before showing the popup"
+                            autoComplete="off"
+                          />
+                        </FormLayout>
+                      </BlockStack>
+                    </Box>
+                  )}
+                </BlockStack>
+              </Card>
+            </Tabs>
+
+            <Box padding="400">
+              <Button variant="primary" submit disabled={isSubmitting}>
+                {isSubmitting ? "Creating..." : "Create Popup"}
+              </Button>
+            </Box>
           </Form>
         </Layout.Section>
       </Layout>
+
+      {/* Preview Modal */}
+      <Modal
+        open={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+        title="Popup Preview"
+      >
+        <Modal.Section>
+          {previewModalContent}
+        </Modal.Section>
+      </Modal>
     </Page>
   );
 } 
