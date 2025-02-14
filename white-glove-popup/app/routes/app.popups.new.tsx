@@ -1,6 +1,6 @@
 import { json, type ActionFunctionArgs, redirect } from "@remix-run/node";
 import { Form, useActionData, useNavigate, useNavigation } from "@remix-run/react";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Page,
   Layout,
@@ -98,6 +98,39 @@ function validateNumber(value: string | null, min: number, max: number): string 
   if (num < min || num > max) return `Must be between ${min} and ${max}`;
   return undefined;
 }
+
+const tabs = [
+  {
+    id: 'basic-info',
+    content: 'Basic Info',
+    accessibilityLabel: 'Basic information',
+    panelID: 'basic-info-panel',
+  },
+  {
+    id: 'design',
+    content: 'Design',
+    accessibilityLabel: 'Design customization',
+    panelID: 'design-panel',
+  },
+  {
+    id: 'content',
+    content: 'Content',
+    accessibilityLabel: 'Content settings',
+    panelID: 'content-panel',
+  },
+  {
+    id: 'targeting',
+    content: 'Targeting',
+    accessibilityLabel: 'Targeting options',
+    panelID: 'targeting-panel',
+  },
+  {
+    id: 'advanced',
+    content: 'Advanced',
+    accessibilityLabel: 'Advanced settings',
+    panelID: 'advanced-panel',
+  },
+];
 
 export async function action({ request }: ActionFunctionArgs) {
   const { session } = await authenticate.admin(request);
