@@ -62,6 +62,19 @@ model Popup {
   buttonText  String?
   secondaryButtonText String?
   
+  // Newsletter and form settings
+  collectEmail Boolean @default(false)
+  emailPlaceholder String?
+  submitEndpoint String?
+  successMessage String?
+  errorMessage String?
+  
+  // Discount settings
+  discountCode String?
+  discountType String? // percentage, fixed
+  discountValue Float?
+  discountDuration Int?
+  
   // Advanced settings
   exitIntentEnabled Boolean @default(false)
   scrollTriggerEnabled Boolean @default(false)
@@ -80,9 +93,6 @@ model Popup {
   
   // Form settings (for newsletter/lead generation)
   formFields  String?   // JSON array of form field configurations
-  submitEndpoint String? // Custom endpoint for form submission
-  successMessage String?
-  errorMessage String?
   
   // Relationships
   events    PopupEvent[]

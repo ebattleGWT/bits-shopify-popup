@@ -1,6 +1,6 @@
 import { json, type ActionFunctionArgs, redirect } from "@remix-run/node";
-import { Form, useActionData, useNavigate, useNavigation } from "@remix-run/react";
-import React, { useState, useEffect } from "react";
+import { Form, useActionData, useNavigate, useNavigation, useSubmit } from "@remix-run/react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Page,
   Layout,
@@ -133,7 +133,7 @@ const tabs = [
 ];
 
 export async function action({ request }: ActionFunctionArgs) {
-  const { session } = await authenticate.admin(request);
+  const { session, admin } = await authenticate.admin(request);
 
   const formData = await request.formData();
   
@@ -162,11 +162,17 @@ export async function action({ request }: ActionFunctionArgs) {
   const buttonText = formData.get("buttonText") || "Close";
   const secondaryButtonText = formData.get("secondaryButtonText") || "";
   
-  // Form settings
-  const formFields = formData.get("formFields");
+  // Form settings for newsletter
+  const collectEmail = popupType === "NEWSLETTER";
+  const emailPlaceholder = formData.get("emailPlaceholder") || "Enter your email";
   const submitEndpoint = formData.get("submitEndpoint");
   const successMessage = formData.get("successMessage") || "Thank you for subscribing!";
   const errorMessage = formData.get("errorMessage") || "Something went wrong. Please try again.";
+  
+  // Discount settings
+  const discountType = formData.get("discountType");
+  const discountValue = formData.get("discountValue");
+  const discountDuration = formData.get("discountDuration");
   
   // Display settings
   const position = formData.get("position") || "CENTER";
@@ -190,6 +196,71 @@ export async function action({ request }: ActionFunctionArgs) {
     parseInt(formData.get("scrollTriggerPercentage") as string, 10) : 50;
   const cookieExpiration = formData.get("cookieExpiration") ? 
     parseInt(formData.get("cookieExpiration") as string, 10) : null;
+
+  // Create discount code if needed
+  let discountCode = null;
+  if (popupType === "PROMOTION" && discountType && discountValue) {
+    try {
+      const response = await admin.graphql(`
+        mutation discountCodeBasicCreate($input: DiscountCodeBasicInput!) {
+          discountCodeBasicCreate(basicCodeDiscount: $input) {
+            codeDiscountNode {
+              id
+              codeDiscount {
+                ... on DiscountCodeBasic {
+                  codes(first: 1) {
+                    edges {
+                      node {
+                        code
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+      `, {
+        variables: {
+          input: {
+            title: `${name} - Popup Discount`,
+            code: `POPUP${Math.random().toString(36).substring(7).toUpperCase()}`,
+            startsAt: startDate ? new Date(startDate.toString()).toISOString() : new Date().toISOString(),
+            endsAt: endDate ? new Date(endDate.toString()).toISOString() : null,
+            customerSelection: {
+              all: true
+            },
+            customerGets: {
+              value: {
+                percentage: discountType === 'percentage' ? parseFloat(discountValue as string) : null,
+                amount: discountType === 'fixed' ? parseFloat(discountValue as string) : null,
+              },
+              items: {
+                all: true
+              }
+            },
+            appliesOncePerCustomer: true
+          }
+        }
+      });
+
+      const responseJson = await response.json();
+      if (responseJson.data?.discountCodeBasicCreate?.codeDiscountNode) {
+        discountCode = responseJson.data.discountCodeBasicCreate.codeDiscountNode.codeDiscount.codes.edges[0].node.code;
+      }
+    } catch (error) {
+      console.error("Failed to create discount code:", error);
+      return json({
+        errors: {
+          general: "Failed to create discount code. Please try again.",
+        },
+      });
+    }
+  }
 
   // Validate all fields
   const errors: Record<string, string> = {};
@@ -266,13 +337,13 @@ export async function action({ request }: ActionFunctionArgs) {
       width: width as string,
       height: height as string,
       borderRadius: borderRadius as string,
-      backgroundColor: backgroundColor as string || null,
-      textColor: textColor as string || null,
-      buttonColor: buttonColor as string || null,
-      buttonTextColor: buttonTextColor as string || null,
+      backgroundColor: JSON.stringify(backgroundColor),
+      textColor: JSON.stringify(textColor),
+      buttonColor: JSON.stringify(buttonColor),
+      buttonTextColor: JSON.stringify(buttonTextColor),
       fontSize: fontSize as string,
       fontFamily: fontFamily as string,
-      overlayColor: overlayColor as string || null,
+      overlayColor: JSON.stringify(overlayColor),
       overlayOpacity,
       
       // Content customization
@@ -281,10 +352,17 @@ export async function action({ request }: ActionFunctionArgs) {
       secondaryButtonText: secondaryButtonText as string || null,
       
       // Form settings
-      formFields: formFields as string || null,
+      collectEmail,
+      emailPlaceholder,
       submitEndpoint: submitEndpoint as string || null,
       successMessage: successMessage as string,
       errorMessage: errorMessage as string,
+      
+      // Discount settings
+      discountCode,
+      discountType: discountType as string || null,
+      discountValue: discountValue ? parseFloat(discountValue as string) : null,
+      discountDuration: discountDuration ? parseInt(discountDuration as string, 10) : null,
       
       // Display settings
       position: position as string,
@@ -331,6 +409,7 @@ export default function NewPopup() {
   const actionData = useActionData<ActionData>();
   const navigation = useNavigation();
   const navigate = useNavigate();
+  const submit = useSubmit();
   const isSubmitting = navigation.state === "submitting";
 
   const [position, setPosition] = useState("CENTER");
@@ -403,6 +482,12 @@ export default function NewPopup() {
   const [submitEndpoint, setSubmitEndpoint] = useState("");
   const [successMessage, setSuccessMessage] = useState("Thank you for subscribing!");
   const [errorMessage, setErrorMessage] = useState("Something went wrong. Please try again.");
+  const [emailPlaceholder, setEmailPlaceholder] = useState("Enter your email");
+
+  // Discount settings state
+  const [discountType, setDiscountType] = useState<"percentage" | "fixed" | "">("");
+  const [discountValue, setDiscountValue] = useState("");
+  const [discountDuration, setDiscountDuration] = useState("");
 
   const [selectedTab, setSelectedTab] = useState(0);
   const [delay, setDelay] = useState<number | null>(0);
@@ -647,6 +732,76 @@ export default function NewPopup() {
     }
   };
 
+  const handleSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    
+    // Add color values
+    formData.set('backgroundColor', JSON.stringify(backgroundColor));
+    formData.set('textColor', JSON.stringify(textColor));
+    formData.set('buttonColor', JSON.stringify(buttonColor));
+    formData.set('buttonTextColor', JSON.stringify(buttonTextColor));
+    formData.set('overlayColor', JSON.stringify(overlayColor));
+    formData.set('overlayOpacity', overlayOpacity.toString());
+    
+    // Add device types (even if empty)
+    if (selectedDevices.length === 0) {
+      formData.append('deviceTypes', 'DESKTOP'); // Default to desktop if none selected
+    } else {
+      selectedDevices.forEach(device => {
+        formData.append('deviceTypes', device);
+      });
+    }
+    
+    // Add dates if set
+    if (startDate) {
+      formData.set('startDate', startDate.toISOString());
+    }
+    if (endDate) {
+      formData.set('endDate', endDate.toISOString());
+    }
+    
+    // Add other form fields
+    formData.set('popupType', popupType);
+    formData.set('template', template);
+    formData.set('width', width);
+    formData.set('height', height);
+    formData.set('borderRadius', borderRadius);
+    formData.set('fontSize', fontSize);
+    formData.set('fontFamily', fontFamily);
+    formData.set('buttonText', buttonText);
+    formData.set('secondaryButtonText', secondaryButtonText);
+    formData.set('position', position);
+    formData.set('theme', theme);
+    formData.set('animation', animation);
+    formData.set('frequency', frequency);
+    formData.set('delay', delay?.toString() || '0');
+    formData.set('exitIntentEnabled', exitIntentEnabled.toString());
+    formData.set('scrollTriggerEnabled', scrollTriggerEnabled.toString());
+    formData.set('scrollTriggerPercentage', scrollTriggerPercentage.toString());
+    if (cookieExpiration !== null) {
+      formData.set('cookieExpiration', cookieExpiration.toString());
+    }
+
+    // Add newsletter and form settings
+    formData.set('collectEmail', (popupType === 'NEWSLETTER').toString());
+    formData.set('emailPlaceholder', emailPlaceholder);
+    formData.set('submitEndpoint', submitEndpoint);
+    formData.set('successMessage', successMessage);
+    formData.set('errorMessage', errorMessage);
+
+    submit(formData, { method: 'post' });
+  }, [
+    backgroundColor, textColor, buttonColor, buttonTextColor, overlayColor,
+    overlayOpacity, selectedDevices, startDate, endDate, popupType, template,
+    width, height, borderRadius, fontSize, fontFamily, buttonText,
+    secondaryButtonText, position, theme, animation, frequency, delay,
+    exitIntentEnabled, scrollTriggerEnabled, scrollTriggerPercentage,
+    cookieExpiration, submit, emailPlaceholder, submitEndpoint,
+    successMessage, errorMessage
+  ]);
+
   return (
     <Page
       title="Create New Popup"
@@ -669,7 +824,7 @@ export default function NewPopup() {
             </Banner>
           )}
 
-          <Form method="post">
+          <Form method="post" onSubmit={handleSubmit}>
             <Card>
               <BlockStack gap="400">
                 <Box padding="400">
@@ -838,6 +993,59 @@ export default function NewPopup() {
                             helpText="Enter the URL of your image"
                             autoComplete="off"
                           />
+                          {popupType === "NEWSLETTER" && (
+                            <>
+                              <TextField
+                                label="Email Placeholder"
+                                name="emailPlaceholder"
+                                value={emailPlaceholder}
+                                onChange={setEmailPlaceholder}
+                                helpText="Placeholder text for the email input field"
+                                autoComplete="off"
+                              />
+                              <TextField
+                                label="Submit Endpoint"
+                                name="submitEndpoint"
+                                value={submitEndpoint}
+                                onChange={setSubmitEndpoint}
+                                helpText="Optional custom endpoint for form submission"
+                                autoComplete="off"
+                              />
+                            </>
+                          )}
+                          {popupType === "PROMOTION" && (
+                            <>
+                              <Select
+                                label="Discount Type"
+                                name="discountType"
+                                options={[
+                                  { label: "Percentage Off", value: "percentage" },
+                                  { label: "Fixed Amount Off", value: "fixed" },
+                                ]}
+                                value={discountType}
+                                onChange={setDiscountType}
+                                helpText="Choose the type of discount to offer"
+                              />
+                              <TextField
+                                label={discountType === "percentage" ? "Percentage Off" : "Amount Off"}
+                                name="discountValue"
+                                type="number"
+                                value={discountValue}
+                                onChange={setDiscountValue}
+                                helpText={discountType === "percentage" ? "Enter percentage (e.g., 15 for 15% off)" : "Enter amount (e.g., 10 for $10 off)"}
+                                autoComplete="off"
+                              />
+                              <TextField
+                                label="Duration (days)"
+                                name="discountDuration"
+                                type="number"
+                                value={discountDuration}
+                                onChange={setDiscountDuration}
+                                helpText="How long the discount code will be valid"
+                                autoComplete="off"
+                              />
+                            </>
+                          )}
                           <TextField
                             label="Button Text"
                             value={buttonText}
@@ -852,7 +1060,7 @@ export default function NewPopup() {
                             helpText="Text for the secondary button (optional)"
                             autoComplete="off"
                           />
-                          {popupType === "NEWSLETTER" && (
+                          {(popupType === "NEWSLETTER" || popupType === "PROMOTION") && (
                             <>
                               <TextField
                                 label="Success Message"
