@@ -192,7 +192,9 @@ export async function action({ request }: ActionFunctionArgs) {
   const endDate = getStringValue('endDate');
   
   // Targeting options
-  const deviceTypes = getStringValue('deviceTypes') ? JSON.parse(getStringValue('deviceTypes') as string) : [];
+  const deviceTypes = getStringValue('deviceTypes') 
+    ? JSON.parse(getStringValue('deviceTypes') as string) 
+    : ['DESKTOP']; // Default to DESKTOP if none selected
   const showOnPages = getStringValue('showOnPages') ? JSON.parse(getStringValue('showOnPages') as string) : [];
   const countries = getStringValue('countries') ? JSON.parse(getStringValue('countries') as string) : [];
   
@@ -311,11 +313,6 @@ export async function action({ request }: ActionFunctionArgs) {
   }
   
   // Targeting validations
-  if (deviceTypes.length === 0) {
-    errors.deviceTypes = "Select at least one device type";
-  }
-  
-  // URL format validation for pages
   if (showOnPages.length > 0) {
     const invalidUrls = showOnPages.some(page => validateUrl(page as string));
     if (invalidUrls) errors.showOnPages = "Invalid URL format in page list";
@@ -752,14 +749,8 @@ export default function NewPopup() {
     formData.set('overlayColor', JSON.stringify(overlayColor));
     formData.set('overlayOpacity', overlayOpacity.toString());
     
-    // Add device types (even if empty)
-    if (selectedDevices.length === 0) {
-      formData.append('deviceTypes', 'DESKTOP'); // Default to desktop if none selected
-    } else {
-      selectedDevices.forEach(device => {
-        formData.append('deviceTypes', device);
-      });
-    }
+    // Add device types as a JSON string
+    formData.set('deviceTypes', JSON.stringify(selectedDevices));
     
     // Add dates if set
     if (startDate) {

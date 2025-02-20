@@ -55,7 +55,7 @@ export default function PopupsIndex() {
               renderItem={(popup) => (
                 <ResourceItem
                   id={popup.id}
-                  url={popup.id}
+                  url={`/app/popups/${popup.id}`}
                 >
                   <Text as="h3" variant="bodyMd">
                     {popup.name}
