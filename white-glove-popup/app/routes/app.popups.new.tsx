@@ -137,65 +137,72 @@ export async function action({ request }: ActionFunctionArgs) {
 
   const formData = await request.formData();
   
-  // Basic Information
-  const name = formData.get("name");
-  const title = formData.get("title");
-  const content = formData.get("content");
-  const popupType = formData.get("popupType") || "STANDARD";
-  const template = formData.get("template");
+  // Helper function to safely get string values from FormData
+  const getStringValue = (key: string): string | null => {
+    const value = formData.get(key);
+    if (value instanceof File) return null;
+    return value?.toString() || null;
+  };
+
+  // Get form values
+  const name = getStringValue('name');
+  const title = getStringValue('title');
+  const content = getStringValue('content');
+  const popupType = getStringValue('popupType');
+  const template = getStringValue('template');
   
   // Design customization
-  const width = formData.get("width") || "400px";
-  const height = formData.get("height") || "auto";
-  const borderRadius = formData.get("borderRadius") || "8px";
-  const backgroundColor = formData.get("backgroundColor");
-  const textColor = formData.get("textColor");
-  const buttonColor = formData.get("buttonColor");
-  const buttonTextColor = formData.get("buttonTextColor");
-  const fontSize = formData.get("fontSize") || "16px";
-  const fontFamily = formData.get("fontFamily") || "system-ui";
-  const overlayColor = formData.get("overlayColor");
-  const overlayOpacity = formData.get("overlayOpacity") ? parseFloat(formData.get("overlayOpacity") as string) : 0.5;
+  const width = getStringValue('width') || "400px";
+  const height = getStringValue('height') || "auto";
+  const borderRadius = getStringValue('borderRadius') || "8px";
+  const backgroundColor = getStringValue('backgroundColor');
+  const textColor = getStringValue('textColor');
+  const buttonColor = getStringValue('buttonColor');
+  const buttonTextColor = getStringValue('buttonTextColor');
+  const fontSize = getStringValue('fontSize') || "16px";
+  const fontFamily = getStringValue('fontFamily') || "system-ui";
+  const overlayColor = getStringValue('overlayColor');
+  const overlayOpacity = getStringValue('overlayOpacity') ? parseFloat(getStringValue('overlayOpacity') as string) : 0.5;
   
   // Content customization
-  const image = formData.get("image") || "";
-  const buttonText = formData.get("buttonText") || "Close";
-  const secondaryButtonText = formData.get("secondaryButtonText") || "";
+  const image = getStringValue('image') || "";
+  const buttonText = getStringValue('buttonText') || "Close";
+  const secondaryButtonText = getStringValue('secondaryButtonText') || "";
   
   // Form settings for newsletter
   const collectEmail = popupType === "NEWSLETTER";
-  const emailPlaceholder = formData.get("emailPlaceholder") || "Enter your email";
-  const submitEndpoint = formData.get("submitEndpoint");
-  const successMessage = formData.get("successMessage") || "Thank you for subscribing!";
-  const errorMessage = formData.get("errorMessage") || "Something went wrong. Please try again.";
+  const emailPlaceholder = getStringValue('emailPlaceholder') || "Enter your email";
+  const submitEndpoint = getStringValue('submitEndpoint');
+  const successMessage = getStringValue('successMessage') || "Thank you for subscribing!";
+  const errorMessage = getStringValue('errorMessage') || "Something went wrong. Please try again.";
   
   // Discount settings
-  const discountType = formData.get("discountType");
-  const discountValue = formData.get("discountValue");
-  const discountDuration = formData.get("discountDuration");
+  const discountType = getStringValue('discountType');
+  const discountValue = getStringValue('discountValue');
+  const discountDuration = getStringValue('discountDuration');
   
   // Display settings
-  const position = formData.get("position") || "CENTER";
-  const theme = formData.get("theme") || "LIGHT";
-  const customCss = formData.get("customCss");
-  const animation = formData.get("animation") || "FADE";
-  const delay = formData.get("delay");
-  const frequency = formData.get("frequency") || "ALWAYS";
-  const startDate = formData.get("startDate");
-  const endDate = formData.get("endDate");
+  const position = getStringValue('position') || "CENTER";
+  const theme = getStringValue('theme') || "LIGHT";
+  const customCss = getStringValue('customCss');
+  const animation = getStringValue('animation') || "FADE";
+  const delay = getStringValue('delay');
+  const frequency = getStringValue('frequency') || "ALWAYS";
+  const startDate = getStringValue('startDate');
+  const endDate = getStringValue('endDate');
   
   // Targeting options
-  const deviceTypes = formData.getAll("deviceTypes");
-  const showOnPages = formData.getAll("showOnPages");
-  const countries = formData.getAll("countries");
+  const deviceTypes = getStringValue('deviceTypes') ? JSON.parse(getStringValue('deviceTypes') as string) : [];
+  const showOnPages = getStringValue('showOnPages') ? JSON.parse(getStringValue('showOnPages') as string) : [];
+  const countries = getStringValue('countries') ? JSON.parse(getStringValue('countries') as string) : [];
   
   // Advanced settings
-  const exitIntentEnabled = formData.get("exitIntentEnabled") === "true";
-  const scrollTriggerEnabled = formData.get("scrollTriggerEnabled") === "true";
-  const scrollTriggerPercentage = formData.get("scrollTriggerPercentage") ? 
-    parseInt(formData.get("scrollTriggerPercentage") as string, 10) : 50;
-  const cookieExpiration = formData.get("cookieExpiration") ? 
-    parseInt(formData.get("cookieExpiration") as string, 10) : null;
+  const exitIntentEnabled = getStringValue('exitIntentEnabled') === "true";
+  const scrollTriggerEnabled = getStringValue('scrollTriggerEnabled') === "true";
+  const scrollTriggerPercentage = getStringValue('scrollTriggerPercentage') ? 
+    parseInt(getStringValue('scrollTriggerPercentage') as string, 10) : 50;
+  const cookieExpiration = getStringValue('cookieExpiration') ? 
+    parseInt(getStringValue('cookieExpiration') as string, 10) : null;
 
   // Create discount code if needed
   let discountCode = null;
@@ -331,7 +338,7 @@ export async function action({ request }: ActionFunctionArgs) {
       title: title as string,
       content: content as string,
       popupType: popupType as string,
-      template: template as string || null,
+      template: (template as string) || null,
       
       // Design customization
       width: width as string,
@@ -347,9 +354,9 @@ export async function action({ request }: ActionFunctionArgs) {
       overlayOpacity,
       
       // Content customization
-      image: image as string || null,
+      image: (image as string) || null,
       buttonText: buttonText as string,
-      secondaryButtonText: secondaryButtonText as string || null,
+      secondaryButtonText: (secondaryButtonText as string) || null,
       
       // Form settings
       collectEmail,
@@ -763,6 +770,9 @@ export default function NewPopup() {
     }
     
     // Add other form fields
+    formData.set('name', name);
+    formData.set('title', title);
+    formData.set('content', content);
     formData.set('popupType', popupType);
     formData.set('template', template);
     formData.set('width', width);
@@ -799,7 +809,7 @@ export default function NewPopup() {
     secondaryButtonText, position, theme, animation, frequency, delay,
     exitIntentEnabled, scrollTriggerEnabled, scrollTriggerPercentage,
     cookieExpiration, submit, emailPlaceholder, submitEndpoint,
-    successMessage, errorMessage
+    successMessage, errorMessage, name, title, content
   ]);
 
   return (
@@ -808,6 +818,14 @@ export default function NewPopup() {
       backAction={{
         content: "Popups",
         onAction: () => navigate("/app/popups"),
+      }}
+      primaryAction={{
+        content: isSubmitting ? "Creating..." : "Create Popup",
+        onAction: () => {
+          const form = document.querySelector('form');
+          if (form) form.requestSubmit();
+        },
+        disabled: isSubmitting
       }}
       secondaryActions={[
         {
@@ -1023,7 +1041,7 @@ export default function NewPopup() {
                                   { label: "Fixed Amount Off", value: "fixed" },
                                 ]}
                                 value={discountType}
-                                onChange={setDiscountType}
+                                onChange={(value) => setDiscountType(value as "" | "fixed" | "percentage")}
                                 helpText="Choose the type of discount to offer"
                               />
                               <TextField
