@@ -139,4 +139,21 @@ model PopupMetrics {
   pageBreakdown   String?   // { "/products": 40, "/cart": 30, "/": 30 }
 
   @@index([shop])
+}
+
+model Subscriber {
+  id          String    @id @default(uuid())
+  email       String
+  shop        String    // Store the Shopify shop domain
+  popupId     String
+  popup       Popup     @relation(fields: [popupId], references: [id])
+  createdAt   DateTime  @default(now())
+  metadata    String?   // Additional data as JSON string
+  status      String    @default("SUBSCRIBED") // SUBSCRIBED, UNSUBSCRIBED
+  source      String    @default("POPUP") // POPUP, FORM, API
+  
+  @@unique([email, shop])
+  @@index([shop])
+  @@index([popupId])
+  @@index([createdAt])
 } 

@@ -27,6 +27,9 @@ export default function App() {
         <Link to="/app/popups">
           Popups
         </Link>
+        <Link to="/app/subscribers">
+          Subscribers
+        </Link>
       </NavMenu>
       <Outlet />
     </AppProvider>

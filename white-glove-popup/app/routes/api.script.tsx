@@ -183,28 +183,130 @@ export async function loader({ request }: LoaderFunctionArgs) {
             container.style.color = '#333';
         }
 
-        // Add content with tracking
-        container.innerHTML = \`
+        // Prepare content based on popup type
+        let contentHtml = '';
+        if (popup.image) {
+          contentHtml += \`
+            <div style="margin-bottom: 15px">
+              <img src="\${popup.image}" alt="" style="max-width: 100%; height: auto;">
+            </div>
+          \`;
+        }
+
+        contentHtml += \`
           <div style="margin-bottom: 15px">
             <h2 style="margin: 0; font-size: 1.2em">\${popup.title}</h2>
           </div>
           <div style="margin-bottom: 20px">
             <p style="margin: 0">\${popup.content}</p>
           </div>
-          <div style="display: flex; justify-content: flex-end; gap: 10px">
-            <button 
-              onclick="this.closest('div').parentElement.remove(); window.trackPopupClose('\${popup.id}')" 
-              style="padding: 8px 16px; border: none; border-radius: 4px; background: #5c6ac4; color: white; cursor: pointer"
-            >
-              Close
-            </button>
-          </div>
         \`;
+
+        // Add form for newsletter popups
+        if (popup.popupType === 'NEWSLETTER') {
+          contentHtml += \`
+            <form id="popup-form-\${popup.id}" style="margin-bottom: 20px">
+              <div style="margin-bottom: 15px">
+                <input 
+                  type="email" 
+                  placeholder="\${popup.emailPlaceholder || 'Enter your email'}"
+                  required
+                  style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;"
+                >
+              </div>
+              <div style="display: flex; justify-content: flex-end; gap: 10px">
+                <button 
+                  type="button"
+                  onclick="this.closest('.popup-container').remove(); window.trackPopupClose('\${popup.id}')"
+                  style="padding: 8px 16px; border: 1px solid #ddd; border-radius: 4px; background: transparent; cursor: pointer"
+                >
+                  \${popup.secondaryButtonText || 'No, thanks'}
+                </button>
+                <button 
+                  type="submit"
+                  style="padding: 8px 16px; border: none; border-radius: 4px; background: \${popup.buttonColor || '#5c6ac4'}; color: \${popup.buttonTextColor || '#fff'}; cursor: pointer"
+                >
+                  \${popup.buttonText || 'Subscribe'}
+                </button>
+              </div>
+            </form>
+            <div id="popup-message-\${popup.id}" style="display: none; margin-top: 10px; text-align: center;"></div>
+          \`;
+        } else {
+          // Standard buttons for non-newsletter popups
+          contentHtml += \`
+            <div style="display: flex; justify-content: flex-end; gap: 10px">
+              <button 
+                onclick="this.closest('.popup-container').remove(); window.trackPopupClose('\${popup.id}')"
+                style="padding: 8px 16px; border: none; border-radius: 4px; background: \${popup.buttonColor || '#5c6ac4'}; color: \${popup.buttonTextColor || '#fff'}; cursor: pointer"
+              >
+                \${popup.buttonText || 'Close'}
+              </button>
+            </div>
+          \`;
+        }
+
+        // Set content and add class
+        container.innerHTML = contentHtml;
+        container.className = 'popup-container';
+
+        // Add form submission handler for newsletter popups
+        if (popup.popupType === 'NEWSLETTER') {
+          const form = container.querySelector(\`#popup-form-\${popup.id}\`);
+          const messageDiv = container.querySelector(\`#popup-message-\${popup.id}\`);
+
+          form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = form.querySelector('input[type="email"]').value;
+
+            try {
+              const response = await fetch('/api/subscribe', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  email,
+                  popupId: popup.id,
+                  shop: '${shop}',
+                  metadata: {
+                    page: getCurrentPage(),
+                    deviceType: getDeviceType(),
+                  },
+                }),
+              });
+
+              const data = await response.json();
+              
+              if (data.success) {
+                form.style.display = 'none';
+                messageDiv.style.display = 'block';
+                messageDiv.style.color = '#4caf50';
+                messageDiv.textContent = popup.successMessage || 'Thank you for subscribing!';
+                
+                // Track conversion
+                trackEvent(popup.id, 'CONVERSION', { email });
+                
+                // Remove popup after delay
+                setTimeout(() => {
+                  container.remove();
+                }, 3000);
+              } else {
+                throw new Error(data.error || 'Subscription failed');
+              }
+            } catch (error) {
+              messageDiv.style.display = 'block';
+              messageDiv.style.color = '#f44336';
+              messageDiv.textContent = popup.errorMessage || 'Something went wrong. Please try again.';
+              console.error('Subscription error:', error);
+            }
+          });
+        }
 
         // Add click tracking to the entire popup
         container.addEventListener('click', (e) => {
-          // Don't track clicks on the close button
-          if (!e.target.closest('button')) {
+          // Don't track clicks on the close button or form elements
+          if (!e.target.closest('button') && !e.target.closest('form')) {
             trackEvent(popup.id, 'CLICK', {
               elementType: e.target.tagName.toLowerCase(),
               text: e.target.textContent,
