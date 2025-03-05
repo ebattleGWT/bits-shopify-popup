@@ -23,6 +23,8 @@ import {
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import prisma from "../db.server";
+import { FormBuilder, type FormField, type FormSettings } from '../components/FormBuilder';
+import type { Popup } from '@prisma/client';
 
 type ActionData = {
   errors?: {
@@ -33,6 +35,35 @@ type ActionData = {
   };
   success?: boolean;
 };
+
+interface ExtendedPopup extends Popup {
+  formEnabled?: boolean;
+  formFields?: FormField[];
+  formSettings?: FormSettings;
+}
+
+interface FormState {
+  position: string;
+  theme: string;
+  frequency: string;
+  animation: string;
+  selectedDevices: string[];
+  selectedPages: string[];
+  selectedCountries: string[];
+  date: {
+    month: number;
+    year: number;
+  };
+  startDate: Date | null;
+  endDate: Date | null;
+  isEnabled: boolean;
+  name: string;
+  title: string;
+  content: string;
+  formEnabled: boolean;
+  formFields: FormField[];
+  formSettings: FormSettings;
+}
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const { session } = await authenticate.admin(request);
@@ -118,6 +149,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
         showOnPages: showOnPages.length ? JSON.stringify(showOnPages) : null,
         countries: countries.length ? JSON.stringify(countries) : null,
         isEnabled,
+        formEnabled: formData.get("formEnabled") === "true",
+        formFields: formData.get("formFields") as string,
+        formSettings: formData.get("formSettings") as string,
       },
     });
 
@@ -159,7 +193,7 @@ export default function EditPopup() {
     }
   }, [actionData]);
 
-  const [formState, setFormState] = React.useState({
+  const [formState, setFormState] = React.useState<FormState>({
     position: popup.position,
     theme: popup.theme,
     frequency: popup.frequency,
@@ -177,36 +211,46 @@ export default function EditPopup() {
     name: popup.name,
     title: popup.title,
     content: popup.content,
+    formEnabled: popup.formEnabled || false,
+    formFields: popup.formFields ? JSON.parse(popup.formFields) as FormField[] : [],
+    formSettings: popup.formSettings ? JSON.parse(popup.formSettings) as FormSettings : {
+      submitButtonText: 'Submit',
+      successMessage: 'Thank you for your submission!',
+      errorMessage: 'Something went wrong. Please try again.',
+      sendConfirmationEmail: false,
+    },
   });
 
-  const handleFormChange = useCallback((field: string, value: any) => {
+  const handleFormChange = (field: keyof FormState, value: any) => {
     setFormState(prev => ({ ...prev, [field]: value }));
     setIsDirty(true);
-  }, []);
+  };
+
+  const appendFormData = (form: HTMLFormElement) => {
+    const formEnabledInput = document.createElement('input');
+    formEnabledInput.type = 'hidden';
+    formEnabledInput.name = 'formEnabled';
+    formEnabledInput.value = formState.formEnabled.toString();
+    form.appendChild(formEnabledInput);
+
+    const formFieldsInput = document.createElement('input');
+    formFieldsInput.type = 'hidden';
+    formFieldsInput.name = 'formFields';
+    formFieldsInput.value = JSON.stringify(formState.formFields);
+    form.appendChild(formFieldsInput);
+
+    const formSettingsInput = document.createElement('input');
+    formSettingsInput.type = 'hidden';
+    formSettingsInput.name = 'formSettings';
+    formSettingsInput.value = JSON.stringify(formState.formSettings);
+    form.appendChild(formSettingsInput);
+  };
 
   const handleSubmit = useCallback((event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
+    appendFormData(form);
     const formData = new FormData(form);
-    
-    // Add hidden fields
-    if (formState.startDate) {
-      formData.append('startDate', formState.startDate.toISOString());
-    }
-    if (formState.endDate) {
-      formData.append('endDate', formState.endDate.toISOString());
-    }
-    formState.selectedDevices.forEach(device => {
-      formData.append('deviceTypes', device);
-    });
-    formState.selectedPages.forEach(page => {
-      formData.append('showOnPages', page);
-    });
-    formState.selectedCountries.forEach(country => {
-      formData.append('countries', country);
-    });
-    formData.append('isEnabled', formState.isEnabled.toString());
-
     submit(formData, { method: 'post' });
   }, [formState, submit]);
 
@@ -709,16 +753,48 @@ export default function EditPopup() {
                               }}
                             />
                           </FormLayout>
-                        </BlockStack>
-                      </Box>
-                    </BlockStack>
-                  </Card>
-                </Layout.Section>
-              </Layout>
-            </Form>
-          </Layout.Section>
-        </Layout>
-      </Page>
-    </Frame>
-  );
+                        </Box>
+
+                        <Box padding="400">
+                          <BlockStack gap="400">
+                            <Text variant="headingMd" as="h3">Form Builder</Text>
+                            <Checkbox
+                              label="Enable form"
+                              checked={formState.formEnabled}
+                              onChange={(checked) => {
+                                setFormState(prev => ({
+                                  ...prev,
+                                  formEnabled: checked
+                                }));
+                                setIsDirty(true);
+                              }}
+                            />
+
+                            {formState.formEnabled && (
+                              <FormBuilder
+                                fields={formState.formFields}
+                                settings={formState.formSettings}
+                                onChange={(fields, settings) => {
+                                  setFormState(prev => ({
+                                    ...prev,
+                                    formFields: fields,
+                                    formSettings: settings
+                                  }));
+                                  setIsDirty(true);
+                                }}
+                              />
+                            )}
+                          </BlockStack>
+                        </Box>
+                      </BlockStack>
+                    </Card>
+                  </Layout.Section>
+                </Layout>
+              </Form>
+            </Layout.Section>
+          </Layout>
+        </Page>
+      </Frame>
+    );
+  }
 } 

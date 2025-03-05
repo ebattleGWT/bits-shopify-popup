@@ -1,5 +1,6 @@
 import { json, type LoaderFunctionArgs } from "@remix-run/node";
 import { useLoaderData, useNavigate } from "@remix-run/react";
+import React, { useState } from "react";
 import {
   Page,
   Layout,
@@ -15,8 +16,8 @@ import {
   Select,
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
+import type { Prisma } from "@prisma/client";
 import prisma from "../db.server";
-import { useState } from "react";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const { session } = await authenticate.admin(request);
@@ -42,43 +43,48 @@ export async function loader({ request }: LoaderFunctionArgs) {
     }),
   };
 
-  // Get total count for pagination
-  const totalSubscribers = await prisma.subscriber.count({ where });
-  const totalPages = Math.ceil(totalSubscribers / pageSize);
+  try {
+    // Get total count for pagination
+    const totalSubscribers = await prisma.subscriber.count({ where });
+    const totalPages = Math.ceil(totalSubscribers / pageSize);
 
-  // Get subscribers with pagination
-  const subscribers = await prisma.subscriber.findMany({
-    where,
-    include: {
-      popup: {
-        select: {
-          name: true,
+    // Get subscribers with pagination
+    const subscribers = await prisma.subscriber.findMany({
+      where,
+      include: {
+        popup: {
+          select: {
+            name: true,
+          },
         },
       },
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-    skip: (page - 1) * pageSize,
-    take: pageSize,
-  });
+      orderBy: {
+        createdAt: 'desc',
+      },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
 
-  // Get popups for filter
-  const popups = await prisma.popup.findMany({
-    where: { shop: session.shop },
-    select: { id: true, name: true },
-  });
+    // Get popups for filter
+    const popups = await prisma.popup.findMany({
+      where: { shop: session.shop },
+      select: { id: true, name: true },
+    });
 
-  return json({
-    subscribers,
-    popups,
-    pagination: {
-      page,
-      pageSize,
-      totalPages,
-      totalSubscribers,
-    },
-  });
+    return json({
+      subscribers,
+      popups,
+      pagination: {
+        page,
+        pageSize,
+        totalPages,
+        totalSubscribers,
+      },
+    });
+  } catch (error) {
+    console.error('Error in subscribers loader:', error);
+    throw error;
+  }
 }
 
 export default function Subscribers() {
@@ -106,42 +112,19 @@ export default function Subscribers() {
     if (popupId) params.set("popupId", popupId);
     if (search) params.set("search", search);
     params.set("page", "1");
-    navigate(\`/app/subscribers?\${params.toString()}\`);
+    navigate(`/app/subscribers?${params.toString()}`);
   };
 
   // Handle export
-  const handleExport = async () => {
-    const subscribers = await prisma.subscriber.findMany({
-      where: {
-        shop: window.shopify.config.shop,
-        status: selectedStatus,
-        ...(selectedPopup && { popupId: selectedPopup }),
-      },
-      include: {
-        popup: {
-          select: { name: true },
-        },
-      },
-    });
-
-    const csv = [
-      ["Email", "Status", "Source", "Popup", "Date"],
-      ...subscribers.map(sub => [
-        sub.email,
-        sub.status,
-        sub.source,
-        sub.popup.name,
-        formatDate(sub.createdAt),
-      ])
-    ].map(row => row.join(",")).join("\\n");
-
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
+  const handleExport = () => {
+    // Get the current URL search params to maintain filters
+    const params = new URLSearchParams(window.location.search);
+    // Create download link for the CSV export
+    const exportUrl = `/api/subscribers/export?${params.toString()}`;
     const a = document.createElement("a");
-    a.href = url;
+    a.href = exportUrl;
     a.download = "subscribers.csv";
     a.click();
-    window.URL.revokeObjectURL(url);
   };
 
   const rows = subscribers.map(subscriber => [
@@ -186,6 +169,7 @@ export default function Subscribers() {
                     label: 'Status',
                     filter: (
                       <Select
+                        label="Status"
                         options={[
                           {label: 'Subscribed', value: 'SUBSCRIBED'},
                           {label: 'Unsubscribed', value: 'UNSUBSCRIBED'},
@@ -203,6 +187,7 @@ export default function Subscribers() {
                     label: 'Popup',
                     filter: (
                       <Select
+                        label="Popup"
                         options={[
                           {label: 'All popups', value: ''},
                           ...popups.map(popup => ({
@@ -248,13 +233,13 @@ export default function Subscribers() {
                       onPrevious={() => {
                         const params = new URLSearchParams(window.location.search);
                         params.set("page", (pagination.page - 1).toString());
-                        navigate(\`/app/subscribers?\${params.toString()}\`);
+                        navigate(`/app/subscribers?${params.toString()}`);
                       }}
                       hasNext={pagination.page < pagination.totalPages}
                       onNext={() => {
                         const params = new URLSearchParams(window.location.search);
                         params.set("page", (pagination.page + 1).toString());
-                        navigate(\`/app/subscribers?\${params.toString()}\`);
+                        navigate(`/app/subscribers?${params.toString()}`);
                       }}
                     />
                   </Box>

@@ -8,109 +8,113 @@ generator client {
 }
 
 model Session {
-  id             String    @id
-  shop           String
-  state          String
-  isOnline       Boolean   @default(false)
-  scope          String?
-  expires        DateTime?
-  accessToken    String
-  userId         BigInt?
-  firstName      String?
-  lastName       String?
-  email          String?
-  accountOwner   Boolean   @default(false)
-  locale         String?
-  collaborator   Boolean   @default(false)
-  emailVerified  Boolean   @default(false)
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean   @default(false)
+  emailVerified Boolean   @default(false)
 }
 
 model Popup {
-  id          String    @id @default(uuid())
-  name        String
-  title       String
-  content     String
-  isEnabled   Boolean   @default(false)
-  startDate   DateTime?
-  endDate     DateTime?
-  position    String    @default("CENTER") // TOP, BOTTOM, LEFT, RIGHT, CENTER
-  theme       String    @default("LIGHT") // LIGHT, DARK, CUSTOM
-  customCss   String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  shop        String    // Store the Shopify shop domain
-  
+  id        String    @id @default(uuid())
+  name      String
+  title     String
+  content   String
+  isEnabled Boolean   @default(false)
+  startDate DateTime?
+  endDate   DateTime?
+  position  String    @default("CENTER") // TOP, BOTTOM, LEFT, RIGHT, CENTER
+  theme     String    @default("LIGHT") // LIGHT, DARK, CUSTOM
+  customCss String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  shop      String // Store the Shopify shop domain
+
   // New fields for enhanced customization
-  popupType   String    @default("STANDARD") // STANDARD, NEWSLETTER, EXIT_INTENT, ANNOUNCEMENT, PROMOTION
-  template    String?   // For predefined templates
-  
+  popupType String  @default("STANDARD") // STANDARD, NEWSLETTER, EXIT_INTENT, ANNOUNCEMENT, PROMOTION
+  template  String? // For predefined templates
+
   // Design customization
-  width       String?   // Can be px or %
-  height      String?   // Can be px or %
-  borderRadius String?
+  width           String? // Can be px or %
+  height          String? // Can be px or %
+  borderRadius    String?
   backgroundColor String?
-  textColor   String?
-  buttonColor String?
+  textColor       String?
+  buttonColor     String?
   buttonTextColor String?
-  fontSize    String?
-  fontFamily  String?
-  overlayColor String?
-  overlayOpacity Float?
-  
+  fontSize        String?
+  fontFamily      String?
+  overlayColor    String?
+  overlayOpacity  Float?
+
   // Content customization
-  image       String?   // URL for popup image
-  buttonText  String?
+  image               String? // URL for popup image
+  buttonText          String?
   secondaryButtonText String?
-  
+
   // Newsletter and form settings
-  collectEmail Boolean @default(false)
+  collectEmail     Boolean @default(false)
   emailPlaceholder String?
-  submitEndpoint String?
-  successMessage String?
-  errorMessage String?
-  
+  submitEndpoint   String?
+  successMessage   String?
+  errorMessage     String?
+
   // Discount settings
-  discountCode String?
-  discountType String? // percentage, fixed
-  discountValue Float?
+  discountCode     String?
+  discountType     String? // percentage, fixed
+  discountValue    Float?
   discountDuration Int?
-  
+
   // Advanced settings
-  exitIntentEnabled Boolean @default(false)
-  scrollTriggerEnabled Boolean @default(false)
-  scrollTriggerPercentage Int @default(50)
-  cookieExpiration Int? // Days until cookie expires
-  
+  exitIntentEnabled       Boolean @default(false)
+  scrollTriggerEnabled    Boolean @default(false)
+  scrollTriggerPercentage Int     @default(50)
+  cookieExpiration        Int? // Days until cookie expires
+
   // Targeting options
-  showOnPages String?   // JSON array of page URLs
-  deviceTypes String?   // JSON array: MOBILE, DESKTOP, TABLET
-  countries   String?   // JSON array of country codes
-  
+  showOnPages String? // JSON array of page URLs
+  deviceTypes String? // JSON array: MOBILE, DESKTOP, TABLET
+  countries   String? // JSON array of country codes
+
   // Display settings
-  delay       Int       @default(0) // Delay in seconds before showing
-  frequency   String    @default("ALWAYS") // ALWAYS, ONCE, DAILY, WEEKLY
-  animation   String    @default("FADE") // FADE, SLIDE, BOUNCE
-  
-  // Form settings (for newsletter/lead generation)
-  formFields  String?   // JSON array of form field configurations
-  
+  delay     Int    @default(0) // Delay in seconds before showing
+  frequency String @default("ALWAYS") // ALWAYS, ONCE, DAILY, WEEKLY
+  animation String @default("FADE") // FADE, SLIDE, BOUNCE
+
+  // Form builder settings
+  formEnabled      Boolean @default(false)
+  formFields       String? // JSON string of form field configurations
+  formSettings     String? // JSON string of form settings
+  formIntegrations String? // JSON string of integration settings
+
   // Relationships
-  events    PopupEvent[]
-  metrics   PopupMetrics?
+  events      PopupEvent[]
+  metrics     PopupMetrics?
+  subscribers Subscriber[]
 }
 
 model PopupEvent {
-  id          String    @id @default(uuid())
-  popupId     String
-  popup       Popup     @relation(fields: [popupId], references: [id], onDelete: Cascade)
-  eventType   String    // IMPRESSION, CLICK, CLOSE, CONVERSION
-  createdAt   DateTime  @default(now())
-  deviceType  String?   // MOBILE, DESKTOP, TABLET
-  country     String?
-  page        String?   // URL where the event occurred
-  metadata    String?   // JSON string for additional data
-  sessionId   String?   // To track unique visitors
-  shop        String    // Store the Shopify shop domain
+  id         String   @id @default(uuid())
+  popupId    String
+  popup      Popup    @relation(fields: [popupId], references: [id], onDelete: Cascade)
+  eventType  String // IMPRESSION, CLICK, CLOSE, CONVERSION
+  createdAt  DateTime @default(now())
+  deviceType String? // MOBILE, DESKTOP, TABLET
+  country    String?
+  page       String? // URL where the event occurred
+  metadata   String? // JSON string for additional data
+  sessionId  String? // To track unique visitors
+  shop       String // Store the Shopify shop domain
 
   @@index([popupId, eventType])
   @@index([createdAt])
@@ -118,42 +122,47 @@ model PopupEvent {
 }
 
 model PopupMetrics {
-  id              String    @id @default(uuid())
-  popupId         String    @unique
-  popup           Popup     @relation(fields: [popupId], references: [id], onDelete: Cascade)
-  impressions     Int       @default(0)
-  clicks          Int       @default(0)
-  conversions     Int       @default(0)
-  closeCount      Int       @default(0)
-  lastUpdated     DateTime  @updatedAt
-  shop            String    // Store the Shopify shop domain
+  id          String   @id @default(uuid())
+  popupId     String   @unique
+  popup       Popup    @relation(fields: [popupId], references: [id], onDelete: Cascade)
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+  conversions Int      @default(0)
+  closeCount  Int      @default(0)
+  lastUpdated DateTime @updatedAt
+  shop        String // Store the Shopify shop domain
 
   // Engagement metrics
-  avgTimeToClick  Float?    // Average time in seconds from impression to click
-  avgTimeToClose  Float?    // Average time in seconds from impression to close
-  bounceRate      Float?    // Percentage of users who close without interaction
-  
+  avgTimeToClick Float? // Average time in seconds from impression to click
+  avgTimeToClose Float? // Average time in seconds from impression to close
+  bounceRate     Float? // Percentage of users who close without interaction
+
   // Device breakdown (JSON strings)
-  deviceBreakdown String?   // { "MOBILE": 40, "DESKTOP": 50, "TABLET": 10 }
-  countryBreakdown String?  // { "US": 60, "CA": 20, "UK": 20 }
-  pageBreakdown   String?   // { "/products": 40, "/cart": 30, "/": 30 }
+  deviceBreakdown  String? // { "MOBILE": 40, "DESKTOP": 50, "TABLET": 10 }
+  countryBreakdown String? // { "US": 60, "CA": 20, "UK": 20 }
+  pageBreakdown    String? // { "/products": 40, "/cart": 30, "/": 30 }
 
   @@index([shop])
 }
 
 model Subscriber {
-  id          String    @id @default(uuid())
-  email       String
-  shop        String    // Store the Shopify shop domain
-  popupId     String
-  popup       Popup     @relation(fields: [popupId], references: [id])
-  createdAt   DateTime  @default(now())
-  metadata    String?   // Additional data as JSON string
-  status      String    @default("SUBSCRIBED") // SUBSCRIBED, UNSUBSCRIBED
-  source      String    @default("POPUP") // POPUP, FORM, API
-  
+  id        String   @id @default(uuid())
+  email     String
+  shop      String // Store the Shopify shop domain
+  popupId   String
+  popup     Popup    @relation(fields: [popupId], references: [id])
+  createdAt DateTime @default(now())
+  formData  Json?    // Store all form field responses
+  metadata  String? // Additional data as JSON string
+  status    String   @default("SUBSCRIBED") // SUBSCRIBED, UNSUBSCRIBED
+  source    String   @default("POPUP") // POPUP, FORM, API
+  firstName String?
+  lastName  String?
+  phone     String?
+  tags      String[] @default([])
+
   @@unique([email, shop])
   @@index([shop])
   @@index([popupId])
   @@index([createdAt])
-} 
+}
